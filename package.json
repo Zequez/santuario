@@ -16,5 +16,8 @@
     "snowpack": "^3.1.0-pre.11",
     "snowpack-plugin-elm": "^0.4.2",
     "tailwindcss": "^2.0.3"
+  },
+  "dependencies": {
+    "elm-mapbox": "^4.1.0"
   }
 }
