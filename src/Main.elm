@@ -5,14 +5,18 @@ import Date exposing (Date, fromCalendarDate)
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles
-import Html exposing (Html, a, div, h2, img, input, select, span, text)
-import Html.Attributes exposing (class, href, placeholder, src, style, title)
+import Html exposing (Html, a, div, h2, img, input, node, select, span, text)
+import Html.Attributes exposing (attribute, class, href, placeholder, src, style, title)
+import Json.Decode
+import Json.Encode
+import LngLat exposing (LngLat)
 import Map.Style
+import MapCommands
 import Mapbox.Element
 import Mapbox.Expression as E exposing (float, str)
 import Mapbox.Layer as Layer exposing (Layer)
 import Mapbox.Source as Source exposing (Source)
-import Mapbox.Style exposing (Style)
+import Mapbox.Style as Style exposing (Style)
 import Round
 import Task exposing (Task)
 import Time
@@ -259,7 +263,26 @@ headerView =
 
 mapView : Model -> Html msg
 mapView model =
-    div [ style "height" "400px", class "w-full" ] [ Mapbox.Element.map [] (buildStyle model) ]
+    let
+        photos : String
+        photos =
+            "["
+                ++ (model.reports
+                        |> List.concatMap (\m -> m.animal.photos)
+                        |> List.map (\s -> "\"" ++ s ++ "\"")
+                        |> String.join ","
+                   )
+                ++ "]"
+    in
+    -- div [ style "height" "400px", class "w-full" ] [ Mapbox.Element.map [] (buildStyle model) ]
+    div [ style "height" "400px", class "w-full" ]
+        [ node "mapbox-images"
+            [ attribute "images" photos
+            , attribute "lat" "-38.0139405"
+            , attribute "lng" "-57.5610563"
+            ]
+            []
+        ]
 
 
 filterView : Html msg
@@ -434,11 +457,51 @@ sexColor sex =
             "HotPink"
 
 
+geojson : Json.Decode.Value
+geojson =
+    Json.Decode.decodeString Json.Decode.value """
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-57.5610563, -38.0631442]
+      }
+    }
+  ]
+}
+""" |> Result.withDefault (Json.Encode.object [])
+
+
+
+-- https://upload.wikimedia.org/wikipedia/commons/7/7c/201408_cat.png
+
+
 buildStyle : Model -> Style
 buildStyle model =
+    let
+        _ =
+            Debug.log "Geojson" geojson
+    in
     Map.Style.light
-        []
-        []
+        [ Source.geoJSONFromValue "photos" [] geojson ]
+        -- [ Layer.fill "changes"
+        --     "changes"
+        --     [ Layer.fillColor (E.rgba 255 255 255 1)
+        --     ]
+        -- , Layer.iconImage (E.str "dot-10")
+        -- ]
+        [ Layer.symbol "photos"
+            "photos"
+            [ Layer.iconImage (E.str "cat")
+            , Layer.iconSize (E.float 0.25)
+            ]
+        ]
+        [ Style.defaultZoomLevel 11
+        , Style.defaultCenter <| LngLat -57.5610563 -38.0139405
+        ]
 
 
 

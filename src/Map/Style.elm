@@ -15,15 +15,15 @@ sandSpace =
 
 
 waterSpace =
-    E.rgba 158 237 225 1
+    E.rgba 188 226 223 1
 
 
 hillSpace =
     E.rgba 109 96 54 1
 
 
-light : List Source -> List Layer -> Style
-light additionalSources additionalLayers =
+light : List Source -> List Layer -> List Style.MiscAttr -> Style
+light additionalSources additionalLayers additionalMisc =
     Style
         { transition = Style.defaultTransition
         , light = Style.defaultLight
@@ -32,9 +32,8 @@ light additionalSources additionalLayers =
             [ Style.sprite "mapbox://sprites/mapbox/light-v9"
             , Style.glyphs "mapbox://fonts/mapbox/{fontstack}/{range}.pbf"
             , Style.name "Light"
-            , Style.defaultZoomLevel 11
-            , Style.defaultCenter { lat = -38.0139405, lng = -57.5610563 }
             ]
+                ++ additionalMisc
         , layers =
             [ Layer.background "background" [ Layer.backgroundColor (E.rgba 245 245 243 1) ]
             , Layer.fill "landcover_wood"

@@ -5,6 +5,7 @@
   "main": "index.js",
   "author": "Ezequiel Schwartzman (zequez@gmail.com)",
   "license": "MIT",
+  "browserslist": "> 0.25%, not dead",
   "scripts": {
     "start": "snowpack dev",
     "build": "snowpack build",
@@ -13,11 +14,18 @@
   "devDependencies": {
     "@snowpack/plugin-postcss": "^1.1.0",
     "autoprefixer": "^10.2.4",
+    "elm-debug-transformer": "^1.1.2",
     "snowpack": "^3.1.0-pre.11",
     "snowpack-plugin-elm": "^0.4.2",
     "tailwindcss": "^2.0.3"
   },
   "dependencies": {
-    "elm-mapbox": "^4.1.0"
+    "@babel/plugin-proposal-class-properties": "^7.13.0",
+    "@babel/plugin-proposal-decorators": "^7.13.5",
+    "@babel/preset-env": "^7.13.9",
+    "@snowpack/plugin-babel": "^2.1.6",
+    "elm-mapbox": "^4.1.0",
+    "lit-element": "^2.4.0",
+    "mapbox-gl": "^2.1.1"
   }
 }
