@@ -934,6 +934,18 @@
   dependencies:
     execa "^5.0.0"
 
+"@types/geojson@*":
+  version "7946.0.7"
+  resolved "https://registry.yarnpkg.com/@types/geojson/-/geojson-7946.0.7.tgz#c8fa532b60a0042219cdf173ca21a975ef0666ad"
+  integrity sha512-wE2v81i4C4Ol09RtsWFAqg3BUitWbHSpSlIo+bNdsCJijO9sjme+zm+73ZMCa/qMC8UEERxzGbvmr1cffo2SiQ==
+
+"@types/mapbox-gl@^2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@types/mapbox-gl/-/mapbox-gl-2.1.0.tgz#73c58b7fd719895e8d58f592dc5139cde4d505f3"
+  integrity sha512-OaLf0MQud7TyEgRYd/JB+ovJjMXJSgeOTFUJspMeJVI/SBEI/2khH7IBM66RiV5x9tpzAnAy68/CkRBLa2NZlw==
+  dependencies:
+    "@types/geojson" "*"
+
 acorn-node@^1.6.1:
   version "1.8.2"
   resolved "https://registry.yarnpkg.com/acorn-node/-/acorn-node-1.8.2.tgz#114c95d64539e53dede23de8b9d96df7c7ae2af8"
@@ -2145,6 +2157,11 @@ snowpack-plugin-elm@^0.4.2:
   dependencies:
     fs-extra "^9.0.1"
     node-elm-compiler "^5.0.5"
+
+snowpack-plugin-raw-file-loader@^1.0.9:
+  version "1.0.9"
+  resolved "https://registry.yarnpkg.com/snowpack-plugin-raw-file-loader/-/snowpack-plugin-raw-file-loader-1.0.9.tgz#072d4c203fd8bc9bece74ef1db7256a1e5b1fc15"
+  integrity sha512-GY7MuommuHfUo7ZfPu/yeyZ7oY7vybTcIc/1JBkg3IwLDNKckprIuhPp8XAvO3gZdCTucDIw6iL2dVEId3GhJw==
 
 snowpack@^3.1.0-pre.11:
   version "3.1.0-pre.11"

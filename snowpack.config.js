@@ -1,3 +1,14 @@
+const fs = require("fs");
+
+function rawificateFiles(filePaths) {
+  filePaths.forEach((filePath) => {
+    let content = JSON.stringify(fs.readFileSync(filePath, "utf-8"));
+    fs.writeFileSync(filePath + "raw.js", `export default ${content}`);
+  });
+}
+
+rawificateFiles(["node_modules/mapbox-gl/dist/mapbox-gl.css"]);
+
 module.exports = {
   plugins: [
     [

@@ -13,6 +13,7 @@
   },
   "devDependencies": {
     "@snowpack/plugin-postcss": "^1.1.0",
+    "@types/mapbox-gl": "^2.1.0",
     "autoprefixer": "^10.2.4",
     "elm-debug-transformer": "^1.1.2",
     "snowpack": "^3.1.0-pre.11",
@@ -26,6 +27,7 @@
     "@snowpack/plugin-babel": "^2.1.6",
     "elm-mapbox": "^4.1.0",
     "lit-element": "^2.4.0",
-    "mapbox-gl": "^2.1.1"
+    "mapbox-gl": "^2.1.1",
+    "snowpack-plugin-raw-file-loader": "^1.0.9"
   }
 }

@@ -7,16 +7,8 @@ import FontAwesome.Solid as Icon
 import FontAwesome.Styles
 import Html exposing (Html, a, div, h2, img, input, node, select, span, text)
 import Html.Attributes exposing (attribute, class, href, placeholder, src, style, title)
-import Json.Decode
-import Json.Encode
-import LngLat exposing (LngLat)
-import Map.Style
-import MapCommands
-import Mapbox.Element
-import Mapbox.Expression as E exposing (float, str)
-import Mapbox.Layer as Layer exposing (Layer)
-import Mapbox.Source as Source exposing (Source)
-import Mapbox.Style as Style exposing (Style)
+import Json.Decode as Decode
+import Json.Encode as JE
 import Round
 import Task exposing (Task)
 import Time
@@ -135,6 +127,16 @@ testAnimal2 =
     }
 
 
+testAnimal3 : Animal
+testAnimal3 =
+    { testAnimal2 | name = "Popote", photos = [ "https://placekitten.com/220/220" ] }
+
+
+testAnimal4 : Animal
+testAnimal4 =
+    { testAnimal2 | name = "Mark", photos = [ "https://placekitten.com/210/210" ] }
+
+
 testReports : List MissingReport
 testReports =
     [ { player = testPlayer
@@ -152,17 +154,17 @@ testReports =
             }
       }
     , { player = testPlayer
-      , animal = testAnimal2
+      , animal = testAnimal3
       , spaceTime =
             { date = Date.fromCalendarDate 2021 Time.Jan 4
-            , location = ( -38.0139405, -57.5610563 )
+            , location = ( -38.0431048, -57.5694195 )
             }
       }
     , { player = testPlayer
-      , animal = testAnimal2
+      , animal = testAnimal4
       , spaceTime =
             { date = Date.fromCalendarDate 2020 Time.Dec 14
-            , location = ( -38.0139405, -57.5610563 )
+            , location = ( -37.9777782, -57.5753418 )
             }
       }
     ]
@@ -261,25 +263,49 @@ headerView =
         ]
 
 
+type alias ImageMarker =
+    { src : String
+    , lat : Float
+    , lng : Float
+    }
+
+
+imageMarkersEncode : List ImageMarker -> JE.Value
+imageMarkersEncode imageMarkers =
+    imageMarkers
+        |> JE.list
+            (\imageMarker ->
+                JE.object
+                    [ ( "src", JE.string imageMarker.src )
+                    , ( "lat", JE.float imageMarker.lat )
+                    , ( "lng", JE.float imageMarker.lng )
+                    ]
+            )
+
+
+reportToMarker : MissingReport -> ImageMarker
+reportToMarker report =
+    { src = Maybe.withDefault "" (List.head report.animal.photos)
+    , lat = Tuple.first report.spaceTime.location
+    , lng = Tuple.second report.spaceTime.location
+    }
+
+
 mapView : Model -> Html msg
 mapView model =
     let
-        photos : String
-        photos =
-            "["
-                ++ (model.reports
-                        |> List.concatMap (\m -> m.animal.photos)
-                        |> List.map (\s -> "\"" ++ s ++ "\"")
-                        |> String.join ","
-                   )
-                ++ "]"
+        markers : List ImageMarker
+        markers =
+            model.reports
+                |> List.map reportToMarker
     in
     -- div [ style "height" "400px", class "w-full" ] [ Mapbox.Element.map [] (buildStyle model) ]
     div [ style "height" "400px", class "w-full" ]
-        [ node "mapbox-images"
-            [ attribute "images" photos
+        [ node "mapbox-element"
+            [ attribute "images" (JE.encode 0 (imageMarkersEncode markers))
             , attribute "lat" "-38.0139405"
             , attribute "lng" "-57.5610563"
+            , attribute "zoom" "10"
             ]
             []
         ]
@@ -455,82 +481,3 @@ sexColor sex =
 
         Female ->
             "HotPink"
-
-
-geojson : Json.Decode.Value
-geojson =
-    Json.Decode.decodeString Json.Decode.value """
-{
-  "type": "FeatureCollection",
-  "features": [
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [-57.5610563, -38.0631442]
-      }
-    }
-  ]
-}
-""" |> Result.withDefault (Json.Encode.object [])
-
-
-
--- https://upload.wikimedia.org/wikipedia/commons/7/7c/201408_cat.png
-
-
-buildStyle : Model -> Style
-buildStyle model =
-    let
-        _ =
-            Debug.log "Geojson" geojson
-    in
-    Map.Style.light
-        [ Source.geoJSONFromValue "photos" [] geojson ]
-        -- [ Layer.fill "changes"
-        --     "changes"
-        --     [ Layer.fillColor (E.rgba 255 255 255 1)
-        --     ]
-        -- , Layer.iconImage (E.str "dot-10")
-        -- ]
-        [ Layer.symbol "photos"
-            "photos"
-            [ Layer.iconImage (E.str "cat")
-            , Layer.iconSize (E.float 0.25)
-            ]
-        ]
-        [ Style.defaultZoomLevel 11
-        , Style.defaultCenter <| LngLat -57.5610563 -38.0139405
-        ]
-
-
-
--- [ Source.geoJSONFromUrl "flooding" "https://data.easos.my/geoserver/easos-flooding/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=easos-flooding:rainfall_latest&outputFormat=application%2Fjson" [] ]
--- [ Layer.circle "points"
---     "flooding"
---     [ E.getProperty (str "stationtype")
---         |> E.matchesStr
---             [ ( "WL", float 1 )
---             , ( "RF", float 3 )
---             , ( "RF & WL", float 5 )
---             ]
---             (float 1)
---         |> Layer.circleRadius
---     , [ E.getProperty (str "waterlevelmsg"), E.getProperty (str "rainfallmsg") ]
---         |> E.coalesce
---         |> E.matchesStr
---             [ ( "LIGHT", E.rgba 125 210 33 1 )
---             , ( "NORMAL", E.rgba 125 210 33 1 )
---             , ( "MODERATE", E.rgba 255 239 0 1 )
---             , ( "ALERT", E.rgba 255 239 0 1 )
---             , ( "HEAVY", E.rgba 255 155 0 1 )
---             , ( "WARNING", E.rgba 255 155 0 1 )
---             , ( "VERY HEAVY", E.rgba 255 0 18 1 )
---             , ( "DANGER", E.rgba 255 0 18 1 )
---             , ( "NODATA", E.rgba 49 93 107 0.2 )
---             , ( "OFF", E.rgba 49 93 107 0.2 )
---             ]
---             (E.rgba 49 93 107 0.2)
---         |> Layer.circleColor
---     ]
--- ]
