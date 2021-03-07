@@ -228,10 +228,6 @@ update msg model =
             ( { model | today = date }, Cmd.none )
 
         ClickedMarker str ->
-            let
-                _ =
-                    Debug.log "Marker clicked" str
-            in
             ( model, Cmd.none )
 
 

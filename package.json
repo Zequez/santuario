@@ -8,8 +8,9 @@
   "browserslist": "> 0.25%, not dead",
   "scripts": {
     "start": "snowpack dev",
-    "build": "snowpack build",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "NODE_ENV=production && snowpack build",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "deploy": "ipfs-deploy build -p pinata -d cloudflare"
   },
   "devDependencies": {
     "@11ty/eleventy": "^0.11.1",

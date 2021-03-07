@@ -3,3 +3,4 @@ build
 elm-stuff
 .idea
 public/**/*.html
+.env
