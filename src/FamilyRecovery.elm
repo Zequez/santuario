@@ -1,4 +1,4 @@
-module Main exposing (main)
+module FamilyRecovery exposing (main)
 
 import Browser
 import Date exposing (Date, fromCalendarDate)
@@ -244,6 +244,11 @@ update msg model =
 ----------------------------------------   ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝
 
 
+docTitle : String
+docTitle =
+    "Animales perdides y encontrades"
+
+
 view : Model -> Browser.Document Msg
 view model =
     let
@@ -252,11 +257,10 @@ view model =
                 |> List.map (contextualizeReport model.today model.geolocation)
                 |> List.sortBy .daysAgo
     in
-    Browser.Document "Santuario"
+    Browser.Document docTitle
         [ div [ class "text-white" ]
             [ FontAwesome.Styles.css
-
-            -- , headerView
+            , headerBackView docTitle
             , mapView model
             , div [ class "container mx-auto p-4" ]
                 [ filterView
@@ -271,9 +275,17 @@ headerView =
     div
         [ class """
             h-12 bg-white bg-opacity-25 flex items-center
-            justify-center text-2xl text-spacing font-bold tracking-wider text-white shadow-md"""
+            justify-center text-2xl text-spacing  shadow-md"""
         ]
         [ a [ href "/" ] [ text "SANTUARIO" ]
+        ]
+
+
+headerBackView : String -> Html msg
+headerBackView pageTitle =
+    div [ class "h-12 bg-white bg-opacity-25 flex items-center" ]
+        [ a [ href "/", class "text-2xl w-12 text-center" ] [ text "❮" ]
+        , div [ class "flex-grow font-semibold text-xl tracking-wider text-white" ] [ text pageTitle ]
         ]
 
 

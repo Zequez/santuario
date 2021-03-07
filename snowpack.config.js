@@ -11,6 +11,7 @@ rawificateFiles(["node_modules/mapbox-gl/dist/mapbox-gl.css"]);
 
 module.exports = {
   plugins: [
+    ["@snowpack/plugin-run-script", { cmd: "eleventy", watch: "$1 --watch" }],
     [
       "@snowpack/plugin-babel",
       {
@@ -30,6 +31,7 @@ module.exports = {
   packageOptions: {},
   devOptions: {
     open: "none",
+    port: 3000,
   },
   buildOptions: {},
   routes: [],

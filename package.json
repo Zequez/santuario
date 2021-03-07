@@ -12,6 +12,7 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "devDependencies": {
+    "@11ty/eleventy": "^0.11.1",
     "@snowpack/plugin-postcss": "^1.1.0",
     "@types/mapbox-gl": "^2.1.0",
     "autoprefixer": "^10.2.4",
@@ -25,6 +26,7 @@
     "@babel/plugin-proposal-decorators": "^7.13.5",
     "@babel/preset-env": "^7.13.9",
     "@snowpack/plugin-babel": "^2.1.6",
+    "@snowpack/plugin-run-script": "^2.3.0",
     "elm-mapbox": "^4.1.0",
     "lit-element": "^2.4.0",
     "mapbox-gl": "^2.1.1",
