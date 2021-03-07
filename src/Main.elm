@@ -7,7 +7,8 @@ import FontAwesome.Solid as Icon
 import FontAwesome.Styles
 import Html exposing (Html, a, div, h2, img, input, node, select, span, text)
 import Html.Attributes exposing (attribute, class, href, placeholder, src, style, title)
-import Json.Decode as Decode
+import Html.Events exposing (on)
+import Json.Decode as JD
 import Json.Encode as JE
 import Round
 import Task exposing (Task)
@@ -42,7 +43,8 @@ type alias Player =
 
 
 type alias MissingReport =
-    { player : Player
+    { id : String
+    , player : Player
     , animal : Animal
     , spaceTime : SpaceTime
     }
@@ -139,28 +141,32 @@ testAnimal4 =
 
 testReports : List MissingReport
 testReports =
-    [ { player = testPlayer
+    [ { id = "one"
+      , player = testPlayer
       , animal = testAnimal
       , spaceTime =
             { date = Date.fromCalendarDate 2021 Time.Feb 4
             , location = ( -38.0631442, -57.5572745 )
             }
       }
-    , { player = testPlayer
+    , { id = "two"
+      , player = testPlayer
       , animal = testAnimal2
       , spaceTime =
             { date = Date.fromCalendarDate 2021 Time.Jan 22
             , location = ( -38.0139405, -57.5610563 )
             }
       }
-    , { player = testPlayer
+    , { id = "three"
+      , player = testPlayer
       , animal = testAnimal3
       , spaceTime =
             { date = Date.fromCalendarDate 2021 Time.Jan 4
             , location = ( -38.0431048, -57.5694195 )
             }
       }
-    , { player = testPlayer
+    , { id = "four"
+      , player = testPlayer
       , animal = testAnimal4
       , spaceTime =
             { date = Date.fromCalendarDate 2020 Time.Dec 14
@@ -212,6 +218,7 @@ main =
 
 type Msg
     = ReceiveDate Date
+    | ClickedMarker String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -219,6 +226,13 @@ update msg model =
     case msg of
         ReceiveDate date ->
             ( { model | today = date }, Cmd.none )
+
+        ClickedMarker str ->
+            let
+                _ =
+                    Debug.log "Marker clicked" str
+            in
+            ( model, Cmd.none )
 
 
 
@@ -230,7 +244,7 @@ update msg model =
 ----------------------------------------   ╚═══╝  ╚═╝╚══════╝ ╚══╝╚══╝ ╚══════╝
 
 
-view : Model -> Browser.Document msg
+view : Model -> Browser.Document Msg
 view model =
     let
         contextualizedReports =
@@ -267,6 +281,7 @@ type alias ImageMarker =
     { src : String
     , lat : Float
     , lng : Float
+    , id : String
     }
 
 
@@ -279,6 +294,7 @@ imageMarkersEncode imageMarkers =
                     [ ( "src", JE.string imageMarker.src )
                     , ( "lat", JE.float imageMarker.lat )
                     , ( "lng", JE.float imageMarker.lng )
+                    , ( "id", JE.string imageMarker.id )
                     ]
             )
 
@@ -288,10 +304,16 @@ reportToMarker report =
     { src = Maybe.withDefault "" (List.head report.animal.photos)
     , lat = Tuple.first report.spaceTime.location
     , lng = Tuple.second report.spaceTime.location
+    , id = report.id
     }
 
 
-mapView : Model -> Html msg
+onMarkerClick : (String -> msg) -> Html.Attribute msg
+onMarkerClick message =
+    on "markerClick" (JD.map message (JD.at [ "detail", "id" ] JD.string))
+
+
+mapView : Model -> Html Msg
 mapView model =
     let
         markers : List ImageMarker
@@ -306,6 +328,7 @@ mapView model =
             , attribute "lat" "-38.0139405"
             , attribute "lng" "-57.5610563"
             , attribute "zoom" "10"
+            , onMarkerClick ClickedMarker
             ]
             []
         ]

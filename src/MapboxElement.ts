@@ -17,6 +17,7 @@ const TOKEN =
 const STYLE = "mapbox://styles/mapbox/streets-v11";
 
 type ImageMarker = {
+  id: string;
   src: string;
   lat: number;
   lng: number;
@@ -30,6 +31,7 @@ export default class MapboxElement extends LitElement {
   @property({ type: Number }) zoom = 10;
 
   map!: Map;
+  markers: { [key: string]: mapboxgl.Marker[] } = {};
 
   @query("#me-map")
   container!: HTMLElement;
@@ -54,16 +56,38 @@ export default class MapboxElement extends LitElement {
         .me-marker {
           width: 50px;
           height: 50px;
-          box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+          cursor: pointer;
+          margin-top: -7px;
+        }
+
+        .me-marker-image-container {
+          position: relative;
+          z-index: 10;
+          width: 100%;
+          height: 100%;
           border: solid 1px white;
           border-radius: 50%;
-          cursor: pointer;
+          box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
           overflow: hidden;
         }
 
         .me-marker img {
           width: 100%;
           object-fit: cover;
+        }
+
+        .me-marker-pointy {
+          z-index: 5;
+          position: absolute;
+          background: white;
+          box-shadow: 0 0 3px rgba(0, 0, 0, 0.5);
+          width: 20px;
+          height: 20px;
+          top: 100%;
+          left: 50%;
+          margin-left: -10px;
+          margin-top: -15px;
+          transform: rotate(45deg);
         }
       `,
     ];
@@ -73,7 +97,10 @@ export default class MapboxElement extends LitElement {
     const fragment = document.createDocumentFragment();
     render(
       lhtml`<div class="me-marker">
-        <img src="${img.src}" />
+        <div class="me-marker-image-container">
+          <img src="${img.src}" />
+        </div>
+        <div class="me-marker-pointy"></div>
       </div>`,
       fragment
     );
@@ -92,8 +119,19 @@ export default class MapboxElement extends LitElement {
       this.map.on("load", () => {
         this.images.map((img) => {
           let el = this.markerElement(img);
-          console.log(el);
-          new mapboxgl.Marker(el).setLngLat([img.lng, img.lat]).addTo(this.map);
+          el.addEventListener("click", () => {
+            this.dispatchEvent(
+              new CustomEvent("markerClick", { detail: { id: img.id } })
+            );
+          });
+
+          new mapboxgl.Marker({
+            element: el,
+            draggable: false,
+            anchor: "bottom",
+          })
+            .setLngLat([img.lng, img.lat])
+            .addTo(this.map);
         });
       });
     }
