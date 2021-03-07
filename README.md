@@ -34,30 +34,8 @@ All of this is part of the digital commons movement.
 
 ## Questions that we seek to answer
 
-> What are the needs of the community and how can we best meet those needs?
-
-Questions are a way we can query the universal intelligence for answers, so I find
-that they are very useful when we are trying to figure what the build and what are
-our next steps.
-
-- How may we best help lost animals reunite with their families?
-- How may we organize local information in a way that we can explore all the community has to offer?
-- How may we best visualize all the local activities and events happening?
-- How may we connect to all the local organizations and the services they provide?
-- How may we form a zero-waste circular economy?
-- How may we coordinate shippings and transportation around the city?
-- How may we coordinate community gardens?
-- How may we form a holistic healthcare network that reaches everyone?
-- How may we meet everyone needs in terms of food and housing?
-- How may we organize to create urban improvements without the need of a centralized authority?
-- How may we use digital currencies to facilitate the gifting of goods and services?
-- How may we connect unused goods with people that can use them?
-- How may we enable people to have free access to cultural resources such as books and audiovisual content?
-- How may we best help people transition to a plant-based diet?
-- How may we help food cooperatives reach everyone?
-- How may we help shelters best fulfill their mission?
-- How may we help animals without a family find a home?
-- How may we help the community organizations communicate coherently between themselves and each other?
+I moved all this to the [Notion workspace where I'm managing all the tasks and goals of
+the project](https://www.notion.so/Santuario-dddb4aa02d4b479d9f6b95cebb2a464f).
 
 ## Playing with the tools
 
