@@ -16,10 +16,12 @@ module FamilyRecovery exposing (main)
 
 import Browser
 import Date exposing (Date, fromCalendarDate)
+import FontAwesome.Brands as Icon
+import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Styles
-import Html exposing (Html, a, div, h2, img, input, node, option, select, span, text)
-import Html.Attributes exposing (attribute, class, href, placeholder, src, style, title, value)
-import Html.Events exposing (on, onInput)
+import Html exposing (Html, a, button, div, h2, img, input, node, option, p, select, span, text)
+import Html.Attributes exposing (attribute, class, href, placeholder, src, style, target, title, value)
+import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
 import Regex
@@ -48,6 +50,7 @@ type alias Model =
     , query : String
     , querySex : Maybe Sex.Sex
     , querySpecie : Maybe Specie.Specie
+    , viewing : Maybe String
     }
 
 
@@ -202,6 +205,7 @@ init =
       , query = ""
       , querySex = Nothing
       , querySpecie = Nothing
+      , viewing = Nothing
       }
     , Date.today |> Task.perform ReceiveDate
     )
@@ -228,7 +232,7 @@ main =
 
 type Msg
     = ReceiveDate Date
-    | ClickedMarker String
+    | OpenReport String
     | SearchTyping String
     | PickSpecie String
     | PickSex String
@@ -240,8 +244,17 @@ update msg model =
         ReceiveDate date ->
             ( { model | today = date }, Cmd.none )
 
-        ClickedMarker str ->
-            ( model, Cmd.none )
+        OpenReport id ->
+            ( { model
+                | viewing =
+                    if List.any (\r -> r.id == id) model.reports then
+                        Just id
+
+                    else
+                        Nothing
+              }
+            , Cmd.none
+            )
 
         SearchTyping query ->
             ( { model | query = query }, Cmd.none )
@@ -313,28 +326,114 @@ view model =
             filteredReports
                 |> List.map (contextualizeReport model.today model.geolocation)
                 |> List.sortBy .daysAgo
+
+        maybeViewingReport : Maybe ContextualizedMissingReport
+        maybeViewingReport =
+            model.viewing
+                |> Maybe.andThen
+                    (\reportId ->
+                        contextualizedReports
+                            |> List.filter (\r -> r.report.id == reportId)
+                            |> List.head
+                    )
     in
     Browser.Document docTitle
         [ div [ class "text-white" ]
             [ FontAwesome.Styles.css
             , headerBackView docTitle
             , mapView filteredReports
-            , div [ class "container mx-auto p-4" ]
-                [ filterView
-                , reportsListView contextualizedReports
+            , case maybeViewingReport of
+                Just report ->
+                    reportPageView report
+
+                Nothing ->
+                    div [ class "container mx-auto p-4" ]
+                        [ filterView
+                        , reportsListView contextualizedReports
+                        ]
+            ]
+        ]
+
+
+reportPageView : ContextualizedMissingReport -> Html Msg
+reportPageView cReport =
+    let
+        report =
+            cReport.report
+
+        animal =
+            report.animal
+
+        player =
+            report.player
+    in
+    div [ class "absolute inset-0 bg-green-600 z-30" ]
+        [ buttonBackView report.animal.name (OpenReport "")
+        , div []
+            (report.animal.photos
+                |> List.map (\p -> img [ src p, class "w-full" ] [])
+            )
+        , div [ class "tracking-wide" ]
+            [ div [ class "bg-yellow-400 bg-opacity-25 p-4 mb-2" ]
+                [ div [ class "mb-2 flex" ]
+                    [ div [ class "flex-grow" ]
+                        [ span [ class "font-bold" ] [ text "Especie: " ]
+                        , text (Specie.emoji report.animal.specie ++ " " ++ Specie.label report.animal.specie)
+                        ]
+                    , div [ class "flex items-center" ]
+                        [ div
+                            [ class "rounded-full text-white h-4 w-4 text-center text-xs mr-1"
+                            , style "background" (Sex.color animal.sex)
+                            ]
+                            [ Sex.icon animal.sex ]
+                        , text (Sex.label animal.sex)
+                        ]
+                    ]
+                , div [ class "flex" ]
+                    [ div [ class "flex-grow" ] [ text ("Desapareció hace " ++ String.fromInt cReport.daysAgo ++ " días") ]
+                    , span
+                        [ class "text-white text-opacity-75" ]
+                        [ text (Date.format "EEEE, d MMMM y" report.spaceTime.date) ]
+                    ]
+                ]
+            , div [ class "p-4" ]
+                [ p [ class "mb-4" ] [ text report.animal.description ]
+                , h2 [ class "text-2xl mb-2" ] [ text "Datos de contacto" ]
+                , div [ class "bg-yellow-400 bg-opacity-25 rounded-md overflow-hidden" ]
+                    [ div [ class "flex" ]
+                        [ img [ src player.avatar, class "h-24 w-24" ] []
+                        , div [ class "flex-grow p-2" ]
+                            [ div [ class "text-xl" ]
+                                [ text player.alias
+                                , span [ class "text-white text-sm text-opacity-75" ] [ text (" (" ++ player.name ++ ")") ]
+                                ]
+                            , div [ class "flex" ]
+                                [ div [ class "flex-grow" ]
+                                    [ div [] [ text player.email ]
+                                    , div [] [ text player.phone ]
+                                    ]
+                                , a
+                                    [ href ("https://api.whatsapp.com/send?phone=" ++ cleanPhoneNumber player.phone)
+                                    , class "flex items-center bg-green-500 rounded-md px-4 font-bold"
+                                    , target "_blank"
+                                    ]
+                                    [ Icon.viewIcon Icon.whatsapp
+                                    , span [ class "ml-2" ] [ text "WhatsApp" ]
+                                    ]
+                                ]
+                            ]
+                        ]
+                    ]
                 ]
             ]
         ]
 
 
-headerView : Html msg
-headerView =
-    div
-        [ class """
-            h-12 bg-white bg-opacity-25 flex items-center
-            justify-center text-2xl text-spacing  shadow-md"""
-        ]
-        [ a [ href "/" ] [ text "SANTUARIO" ]
+buttonBackView : String -> Msg -> Html Msg
+buttonBackView pageTitle msg =
+    div [ class "h-12 bg-yellow-400 bg-opacity-25 flex items-center" ]
+        [ button [ class "text-2xl w-12 text-center", onClick msg ] [ text "❮" ]
+        , div [ class "flex-grow font-semibold text-xl tracking-wider text-white" ] [ text pageTitle ]
         ]
 
 
@@ -396,7 +495,7 @@ mapView reports =
             , attribute "lat" "-38.0139405"
             , attribute "lng" "-57.5610563"
             , attribute "zoom" "10"
-            , onMarkerClick ClickedMarker
+            , onMarkerClick OpenReport
             ]
             []
         ]
@@ -428,12 +527,12 @@ filterView =
         ]
 
 
-reportsListView : List ContextualizedMissingReport -> Html msg
+reportsListView : List ContextualizedMissingReport -> Html Msg
 reportsListView reports =
     div [ class "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" ] (List.map reportsCardView reports)
 
 
-reportsCardView : ContextualizedMissingReport -> Html msg
+reportsCardView : ContextualizedMissingReport -> Html Msg
 reportsCardView cReport =
     let
         animal =
@@ -442,7 +541,7 @@ reportsCardView cReport =
         report =
             cReport.report
     in
-    a [ class "bg-white text-gray-800 shadow-md overflow-hidden rounded-md", href "/" ]
+    a [ class "bg-white text-gray-800 shadow-md overflow-hidden rounded-md cursor-pointer", onClick (OpenReport report.id) ]
         [ div [ class "h-40 overflow-hidden" ]
             [ img
                 [ class "object-cover w-full"
@@ -531,6 +630,16 @@ distanceBetweenPoints ( lat1, lng1 ) ( lat2, lng2 ) =
 daysBetweenDates : Date -> Date -> Int
 daysBetweenDates from to =
     Date.toRataDie to - Date.toRataDie from
+
+
+cleanPhoneNumber : String -> String
+cleanPhoneNumber phone =
+    let
+        regex =
+            Maybe.withDefault Regex.never (Regex.fromString "[^0-9]")
+    in
+    phone
+        |> Regex.replace regex (\_ -> "")
 
 
 normalizationRegex : Regex.Regex
