@@ -1,3 +1,17 @@
+----------------------------------------- ███████╗███╗   ███╗██╗██╗     ███████╗
+----------------------------------------- ██╔════╝████╗ ████║██║██║     ██╔════╝
+----------------------------------------- ███████╗██╔████╔██║██║██║     █████╗
+----------------------------------------- ╚════██║██║╚██╔╝██║██║██║     ██╔══╝
+----------------------------------------- ███████║██║ ╚═╝ ██║██║███████╗███████╗
+----------------------------------------- ╚══════╝╚═╝     ╚═╝╚═╝╚══════╝╚══════╝
+-- ██╗   ██╗ ██████╗ ██╗   ██╗     █████╗ ██████╗ ███████╗    ███████╗███╗   ██╗ ██████╗ ██╗   ██╗ ██████╗ ██╗  ██╗
+-- ╚██╗ ██╔╝██╔═══██╗██║   ██║    ██╔══██╗██╔══██╗██╔════╝    ██╔════╝████╗  ██║██╔═══██╗██║   ██║██╔════╝ ██║  ██║
+--  ╚████╔╝ ██║   ██║██║   ██║    ███████║██████╔╝█████╗      █████╗  ██╔██╗ ██║██║   ██║██║   ██║██║  ███╗███████║
+--   ╚██╔╝  ██║   ██║██║   ██║    ██╔══██║██╔══██╗██╔══╝      ██╔══╝  ██║╚██╗██║██║   ██║██║   ██║██║   ██║██╔══██║
+--    ██║   ╚██████╔╝╚██████╔╝    ██║  ██║██║  ██║███████╗    ███████╗██║ ╚████║╚██████╔╝╚██████╔╝╚██████╔╝██║  ██║
+--    ╚═╝    ╚═════╝  ╚═════╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝    ╚══════╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
+
+
 module FamilyRecovery exposing (main)
 
 import Browser
@@ -7,9 +21,10 @@ import FontAwesome.Solid as Icon
 import FontAwesome.Styles
 import Html exposing (Html, a, div, h2, img, input, node, select, span, text)
 import Html.Attributes exposing (attribute, class, href, placeholder, src, style, title)
-import Html.Events exposing (on)
+import Html.Events exposing (on, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
+import Regex
 import Round
 import Task exposing (Task)
 import Time
@@ -30,6 +45,7 @@ type alias Model =
     , geolocation : GeoLocation
     , searchKm : Float
     , today : Date
+    , query : String
     }
 
 
@@ -192,6 +208,7 @@ init =
       , geolocation = Nothing
       , searchKm = 5.0
       , today = Date.fromCalendarDate 2020 Time.Jan 1
+      , query = ""
       }
     , Date.today |> Task.perform ReceiveDate
     )
@@ -219,6 +236,7 @@ main =
 type Msg
     = ReceiveDate Date
     | ClickedMarker String
+    | SearchTyping String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -229,6 +247,9 @@ update msg model =
 
         ClickedMarker str ->
             ( model, Cmd.none )
+
+        SearchTyping query ->
+            ( { model | query = query }, Cmd.none )
 
 
 
@@ -245,11 +266,43 @@ docTitle =
     "Animales perdides y encontrades"
 
 
+normalizationRegex : Regex.Regex
+normalizationRegex =
+    Maybe.withDefault Regex.never (Regex.fromString "[^a-z0-9\\s]")
+
+
+normalizeString : String -> String
+normalizeString str =
+    str
+        |> String.toLower
+        |> Regex.replace normalizationRegex (\_ -> " ")
+
+
+regexFromString : String -> Regex.Regex
+regexFromString query =
+    Maybe.withDefault Regex.never (Regex.fromString query)
+
+
+searchString : String -> String -> Bool
+searchString searchSubject query =
+    if query /= "" then
+        let
+            regexQuery : Regex.Regex
+            regexQuery =
+                regexFromString (normalizeString query)
+        in
+        Regex.contains regexQuery (normalizeString searchSubject)
+
+    else
+        True
+
+
 view : Model -> Browser.Document Msg
 view model =
     let
         contextualizedReports =
             model.reports
+                |> List.filter (\r -> searchString r.animal.name model.query)
                 |> List.map (contextualizeReport model.today model.geolocation)
                 |> List.sortBy .daysAgo
     in
@@ -342,12 +395,13 @@ mapView model =
         ]
 
 
-filterView : Html msg
+filterView : Html Msg
 filterView =
     div [ class "mb-4" ]
         [ input
             [ class "px-4 py-2 text-xl rounded-md w-full text-black"
             , placeholder "Buscar..."
+            , onInput SearchTyping
             ]
             []
         ]
