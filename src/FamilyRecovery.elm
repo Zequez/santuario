@@ -16,16 +16,16 @@ module FamilyRecovery exposing (main)
 
 import Browser
 import Date exposing (Date, fromCalendarDate)
-import FontAwesome.Icon as Icon exposing (Icon)
-import FontAwesome.Solid as Icon
 import FontAwesome.Styles
-import Html exposing (Html, a, div, h2, img, input, node, select, span, text)
-import Html.Attributes exposing (attribute, class, href, placeholder, src, style, title)
+import Html exposing (Html, a, div, h2, img, input, node, option, select, span, text)
+import Html.Attributes exposing (attribute, class, href, placeholder, src, style, title, value)
 import Html.Events exposing (on, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
 import Regex
 import Round
+import Sex
+import Specie
 import Task exposing (Task)
 import Time
 
@@ -46,6 +46,8 @@ type alias Model =
     , searchKm : Float
     , today : Date
     , query : String
+    , querySex : Maybe Sex.Sex
+    , querySpecie : Maybe Specie.Specie
     }
 
 
@@ -75,8 +77,8 @@ type alias ContextualizedMissingReport =
 
 type alias Animal =
     { name : String
-    , specie : Specie
-    , sex : Sex
+    , specie : Specie.Specie
+    , sex : Sex.Sex
     , description : String
     , contact : String
     , photos : List String
@@ -85,17 +87,6 @@ type alias Animal =
 
 type alias GeoLocation =
     Maybe ( Float, Float )
-
-
-type Sex
-    = Male
-    | Female
-
-
-type Specie
-    = Dog
-    | Cat
-    | Other
 
 
 type alias SpaceTime =
@@ -126,8 +117,8 @@ testPlayer =
 testAnimal : Animal
 testAnimal =
     { name = "Marley"
-    , specie = Dog
-    , sex = Male
+    , specie = Specie.Dog
+    , sex = Sex.Male
     , description = "He's a good boy"
     , contact = "Call Zequez @ +5492235235568"
     , photos = [ "https://placekitten.com/200/200" ]
@@ -137,8 +128,8 @@ testAnimal =
 testAnimal2 : Animal
 testAnimal2 =
     { name = "Meri"
-    , specie = Cat
-    , sex = Female
+    , specie = Specie.Cat
+    , sex = Sex.Female
     , description = "She's a little timid"
     , contact = "Call Zequez @ +5492235235568"
     , photos = [ "https://placekitten.com/225/225" ]
@@ -209,6 +200,8 @@ init =
       , searchKm = 5.0
       , today = Date.fromCalendarDate 2020 Time.Jan 1
       , query = ""
+      , querySex = Nothing
+      , querySpecie = Nothing
       }
     , Date.today |> Task.perform ReceiveDate
     )
@@ -237,6 +230,8 @@ type Msg
     = ReceiveDate Date
     | ClickedMarker String
     | SearchTyping String
+    | PickSpecie String
+    | PickSex String
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -250,6 +245,30 @@ update msg model =
 
         SearchTyping query ->
             ( { model | query = query }, Cmd.none )
+
+        PickSpecie str ->
+            ( { model
+                | querySpecie =
+                    if str == "all" then
+                        Nothing
+
+                    else
+                        Just (Specie.fromSlug str)
+              }
+            , Cmd.none
+            )
+
+        PickSex str ->
+            ( { model
+                | querySex =
+                    if str == "all" then
+                        Nothing
+
+                    else
+                        Just (Sex.fromSlug str)
+              }
+            , Cmd.none
+            )
 
 
 
@@ -266,12 +285,27 @@ docTitle =
     "Animales perdides y encontrades"
 
 
+maybeFilter : Maybe k -> k -> Bool
+maybeFilter maybeK val =
+    case maybeK of
+        Just k ->
+            k == val
+
+        Nothing ->
+            True
+
+
 view : Model -> Browser.Document Msg
 view model =
     let
         filteredReports =
             model.reports
-                |> List.filter (\r -> searchString r.animal.name model.query)
+                |> List.filter
+                    (\r ->
+                        searchString r.animal.name model.query
+                            && maybeFilter model.querySpecie r.animal.specie
+                            && maybeFilter model.querySex r.animal.sex
+                    )
 
         contextualizedReports =
             filteredReports
@@ -375,6 +409,20 @@ filterView =
             , onInput SearchTyping
             ]
             []
+        , div [ class "mt-4 text-black" ]
+            [ select [ class "p-2 rounded-md", onInput PickSpecie ]
+                (option [ value "all" ] [ text "Todas las especies" ]
+                    :: (Specie.all
+                            |> List.map Specie.htmlOption
+                       )
+                )
+            , select [ class "p-2 rounded-md ml-4", onInput PickSex ]
+                (option [ value "all" ] [ text "Macho/Hembra" ]
+                    :: (Sex.all
+                            |> List.map Sex.htmlOption
+                       )
+                )
+            ]
         ]
 
 
@@ -406,14 +454,14 @@ reportsCardView cReport =
                     [ text report.animal.name ]
                 , div
                     [ class "flex items-center" ]
-                    [ span [ title (specieText animal.specie) ]
-                        [ text (specieEmoji animal.specie) ]
+                    [ span [ title (Specie.label animal.specie) ]
+                        [ text (Specie.emoji animal.specie) ]
                     , div
-                        [ title (sexText animal.sex)
+                        [ title (Sex.label animal.sex)
                         , class "rounded-full text-white h-4 w-4 text-center text-xs ml-1"
-                        , style "background" (sexColor animal.sex)
+                        , style "background" (Sex.color animal.sex)
                         ]
-                        [ sexIcon animal.sex ]
+                        [ Sex.icon animal.sex ]
                     ]
                 ]
             , div [ class "flex text-xs text-gray-600" ]
@@ -481,62 +529,6 @@ distanceBetweenPoints ( lat1, lng1 ) ( lat2, lng2 ) =
 daysBetweenDates : Date -> Date -> Int
 daysBetweenDates from to =
     Date.toRataDie to - Date.toRataDie from
-
-
-specieEmoji : Specie -> String
-specieEmoji specie =
-    case specie of
-        Dog ->
-            "🐶"
-
-        Cat ->
-            "🐱"
-
-        Other ->
-            "🐾"
-
-
-specieText : Specie -> String
-specieText specie =
-    case specie of
-        Dog ->
-            "Perre"
-
-        Cat ->
-            "Gate"
-
-        Other ->
-            "Otro"
-
-
-sexIcon : Sex -> Html msg
-sexIcon sex =
-    case sex of
-        Male ->
-            Icon.viewIcon Icon.mars
-
-        Female ->
-            Icon.viewIcon Icon.venus
-
-
-sexText : Sex -> String
-sexText sex =
-    case sex of
-        Male ->
-            "Marte"
-
-        Female ->
-            "Venus"
-
-
-sexColor : Sex -> String
-sexColor sex =
-    case sex of
-        Male ->
-            "DeepSkyBlue"
-
-        Female ->
-            "HotPink"
 
 
 normalizationRegex : Regex.Regex
