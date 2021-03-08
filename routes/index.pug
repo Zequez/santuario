@@ -10,7 +10,7 @@ mixin btn(href, text, target = "")
 .flex.flex-col.h-full.text-white.items-center
   header.flex.flex-col.relative.justify-center.items-center.w-full.overflow-hidden(class="h-1/2 md:h-5/6")
     .absolute.inset-0.overflow-hidden.z-10
-      img.object-cover(src="/splash.jpg")
+      img.object-cover.w-full.h-full(src="/splash.jpg")
       .absolute.bottom-0.right-0.p-1.text-xs.bg-black.bg-opacity-50.rounded-tl-sm
         | Foto por&nbsp;
         a.text-yellow-200(href="https://unsplash.com/@clarabeukes?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText", target="_blank")
@@ -26,7 +26,7 @@ mixin btn(href, text, target = "")
           | Imagina que las ciudades fuesen un santuario para la vida
           br
           | ¿Como trabajaríamos juntes? ¿Cómo nos coordinaríamos?
-  main.flex.flex-col.items-center.justify-center.flex-grow.text-xl.max-w-md
+  main.flex.flex-col.items-center.flex-grow.pt-4.text-xl.max-w-md
     h2.mb-4.text-2xl.font-light Herramientas
     +btn("/perdides", "Animales perdides y encontrades")
     h2.mb-4.text-2xl.font-light Proyecto
