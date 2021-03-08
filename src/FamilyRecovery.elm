@@ -130,7 +130,7 @@ testAnimal2 =
     { name = "Meri"
     , specie = Specie.Cat
     , sex = Sex.Female
-    , description = "She's a little timid"
+    , description = "She's a little timid. Mancha marron."
     , contact = "Call Zequez @ +5492235235568"
     , photos = [ "https://placekitten.com/225/225" ]
     }
@@ -302,7 +302,9 @@ view model =
             model.reports
                 |> List.filter
                     (\r ->
-                        searchString r.animal.name model.query
+                        (searchString r.animal.name model.query
+                            || searchString r.animal.description model.query
+                        )
                             && maybeFilter model.querySpecie r.animal.specie
                             && maybeFilter model.querySex r.animal.sex
                     )
