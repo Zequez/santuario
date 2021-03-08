@@ -115,7 +115,7 @@ export default class MapboxElement extends LitElement {
           this.markers[img.id] = new ImageMarkerElement(
             this.map,
             img,
-            this.dispatchEvent
+            (ev: CustomEvent) => this.dispatchEvent(ev)
           );
         }
       });
