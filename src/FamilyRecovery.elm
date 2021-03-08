@@ -266,43 +266,15 @@ docTitle =
     "Animales perdides y encontrades"
 
 
-normalizationRegex : Regex.Regex
-normalizationRegex =
-    Maybe.withDefault Regex.never (Regex.fromString "[^a-z0-9\\s]")
-
-
-normalizeString : String -> String
-normalizeString str =
-    str
-        |> String.toLower
-        |> Regex.replace normalizationRegex (\_ -> " ")
-
-
-regexFromString : String -> Regex.Regex
-regexFromString query =
-    Maybe.withDefault Regex.never (Regex.fromString query)
-
-
-searchString : String -> String -> Bool
-searchString searchSubject query =
-    if query /= "" then
-        let
-            regexQuery : Regex.Regex
-            regexQuery =
-                regexFromString (normalizeString query)
-        in
-        Regex.contains regexQuery (normalizeString searchSubject)
-
-    else
-        True
-
-
 view : Model -> Browser.Document Msg
 view model =
     let
-        contextualizedReports =
+        filteredReports =
             model.reports
                 |> List.filter (\r -> searchString r.animal.name model.query)
+
+        contextualizedReports =
+            filteredReports
                 |> List.map (contextualizeReport model.today model.geolocation)
                 |> List.sortBy .daysAgo
     in
@@ -310,7 +282,7 @@ view model =
         [ div [ class "text-white" ]
             [ FontAwesome.Styles.css
             , headerBackView docTitle
-            , mapView model
+            , mapView filteredReports
             , div [ class "container mx-auto p-4" ]
                 [ filterView
                 , reportsListView contextualizedReports
@@ -374,15 +346,14 @@ onMarkerClick message =
     on "markerClick" (JD.map message (JD.at [ "detail", "id" ] JD.string))
 
 
-mapView : Model -> Html Msg
-mapView model =
+mapView : List MissingReport -> Html Msg
+mapView reports =
     let
         markers : List ImageMarker
         markers =
-            model.reports
+            reports
                 |> List.map reportToMarker
     in
-    -- div [ style "height" "400px", class "w-full" ] [ Mapbox.Element.map [] (buildStyle model) ]
     div [ style "height" "400px", class "w-full" ]
         [ node "mapbox-element"
             [ attribute "images" (JE.encode 0 (imageMarkersEncode markers))
@@ -566,3 +537,34 @@ sexColor sex =
 
         Female ->
             "HotPink"
+
+
+normalizationRegex : Regex.Regex
+normalizationRegex =
+    Maybe.withDefault Regex.never (Regex.fromString "[^a-z0-9\\s]")
+
+
+normalizeString : String -> String
+normalizeString str =
+    str
+        |> String.toLower
+        |> Regex.replace normalizationRegex (\_ -> " ")
+
+
+regexFromString : String -> Regex.Regex
+regexFromString query =
+    Maybe.withDefault Regex.never (Regex.fromString query)
+
+
+searchString : String -> String -> Bool
+searchString searchSubject query =
+    if query /= "" then
+        let
+            regexQuery : Regex.Regex
+            regexQuery =
+                regexFromString (normalizeString query)
+        in
+        Regex.contains regexQuery (normalizeString searchSubject)
+
+    else
+        True

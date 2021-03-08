@@ -1,5 +1,5 @@
 import mapboxGlobalStyle from "mapbox-gl/dist/mapbox-gl.cssraw.js";
-import mapboxgl, { Map } from "mapbox-gl";
+import mapboxgl from "mapbox-gl";
 import {
   LitElement,
   html,
@@ -16,13 +16,6 @@ const TOKEN =
 
 const STYLE = "mapbox://styles/mapbox/streets-v11";
 
-type ImageMarker = {
-  id: string;
-  src: string;
-  lat: number;
-  lng: number;
-};
-
 @customElement("mapbox-element")
 export default class MapboxElement extends LitElement {
   @property({ type: Object }) images: ImageMarker[] = [];
@@ -30,8 +23,8 @@ export default class MapboxElement extends LitElement {
   @property({ type: Number }) lng = 0.0;
   @property({ type: Number }) zoom = 10;
 
-  map!: Map;
-  markers: { [key: string]: mapboxgl.Marker[] } = {};
+  map!: mapboxgl.Map;
+  markers: { [key: string]: ImageMarkerElement } = {};
 
   @query("#me-map")
   container!: HTMLElement;
@@ -93,7 +86,126 @@ export default class MapboxElement extends LitElement {
     ];
   }
 
-  markerElement(img: ImageMarker): HTMLElement {
+  firstUpdated() {
+    if (this.shadowRoot) {
+      this.map = new mapboxgl.Map({
+        container: this.container,
+        style: STYLE,
+        accessToken: TOKEN,
+        center: { lat: this.lat, lng: this.lng },
+        zoom: this.zoom,
+      });
+    }
+  }
+
+  updated(changedProperties: Map<string, any>) {
+    if (changedProperties.has("images")) {
+      const incomingIds = this.images.map((img) => img.id);
+      const markersOnMap = Object.values(this.markers).filter(
+        (mkEl) => mkEl.onMap
+      );
+      const markersToRemove = markersOnMap.filter(
+        (mkEl) => incomingIds.indexOf(mkEl.img.id) === -1
+      );
+      markersToRemove.forEach((mkEl) => mkEl.remove());
+      this.images.forEach((img) => {
+        if (this.markers[img.id]) {
+          this.markers[img.id].update(img);
+        } else {
+          this.markers[img.id] = new ImageMarkerElement(
+            this.map,
+            img,
+            this.dispatchEvent
+          );
+        }
+      });
+    }
+    return true;
+  }
+
+  render() {
+    return html`<div id="me-map"></div>`;
+  }
+}
+
+type ImageMarker = {
+  id: string;
+  src: string;
+  lat: number;
+  lng: number;
+};
+
+class ImageMarkerElement {
+  img!: ImageMarker;
+  el!: HTMLElement;
+  map!: mapboxgl.Map;
+  marker!: mapboxgl.Marker;
+  dispatchEvent!: any;
+  onMap: boolean = false;
+
+  constructor(map: mapboxgl.Map, img: ImageMarker, dispatchEvent: any) {
+    this.map = map;
+    this.img = img;
+    this.el = this.createElement(this.img);
+    this.marker = this.createMarker(this.img);
+    this.dispatchEvent = dispatchEvent;
+    this.bindElement();
+    this.add();
+  }
+
+  update(newImg: ImageMarker) {
+    if (newImg.src !== this.img.src) {
+      let imgEl = this.el.querySelector("img");
+      imgEl!.src = newImg.src;
+    }
+
+    if (newImg.lat !== this.img.lat || newImg.lng !== this.img.lng) {
+      this.marker.setLngLat([newImg.lng, newImg.lat]);
+    }
+
+    this.img = newImg;
+
+    this.add();
+  }
+
+  remove() {
+    this.marker.remove();
+    this.onMap = false;
+  }
+
+  add() {
+    if (!this.onMap) {
+      if (this.map.loaded()) {
+        this.marker.addTo(this.map);
+        this.onMap = true;
+      } else {
+        this.map.on("load", () => {
+          this.marker.addTo(this.map);
+          this.onMap = true;
+        });
+      }
+    }
+  }
+
+  bindElement() {
+    this.el.addEventListener("click", () => {
+      this.dispatchEvent(
+        new CustomEvent("markerClick", { detail: { id: this.img.id } })
+      );
+    });
+  }
+
+  createMarker(img: ImageMarker): mapboxgl.Marker {
+    const marker = new mapboxgl.Marker({
+      element: this.el,
+      draggable: false,
+      anchor: "bottom",
+    }).setLngLat([img.lng, img.lat]);
+
+    return marker;
+  }
+
+  createElement(img: ImageMarker): HTMLElement {
     const fragment = document.createDocumentFragment();
     render(
       lhtml`<div class="me-marker">
@@ -105,41 +217,5 @@ export default class MapboxElement extends LitElement {
       fragment
     );
     return fragment.firstElementChild as HTMLElement;
-  }
-
-  firstUpdated() {
-    if (this.shadowRoot) {
-      this.map = new mapboxgl.Map({
-        container: this.container,
-        style: STYLE,
-        accessToken: TOKEN,
-        center: { lat: this.lat, lng: this.lng },
-        zoom: this.zoom,
-      });
-      this.map.on("load", () => {
-        this.images.map((img) => {
-          let el = this.markerElement(img);
-          el.addEventListener("click", () => {
-            this.dispatchEvent(
-              new CustomEvent("markerClick", { detail: { id: img.id } })
-            );
-          });
-
-          new mapboxgl.Marker({
-            element: el,
-            draggable: false,
-            anchor: "bottom",
-          })
-            .setLngLat([img.lng, img.lat])
-            .addTo(this.map);
-        });
-      });
-    }
-  }
-
-  updated() {}
-
-  render() {
-    return html`<div id="me-map"></div>`;
   }
 }
