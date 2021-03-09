@@ -530,10 +530,14 @@ reportsResolutionsView cReports =
                         , div [ class "flex items-center justify-center text-black text-opacity-50 text-xs" ]
                             [ div []
                                 [ div [ class "relative" ]
-                                    [ img [ class "h-32 w-32 rounded-full mx-2 mb-2", src (Maybe.withDefault "" (List.head missing.report.animal.photos)) ] []
+                                    [ img [ class "h-32 w-32 rounded-full mx-2 mb-2 border-2 border-white shadow-md", src (Maybe.withDefault "" (List.head missing.report.animal.photos)) ] []
                                     , case Maybe.andThen (\f -> List.head f.report.animal.photos) maybeFound of
                                         Just photoSrc ->
-                                            img [ class "h-12 w-12 rounded-full absolute bottom-0 right-0", src photoSrc ] []
+                                            img
+                                                [ class "h-12 w-12 rounded-full absolute bottom-0 right-0 border-2 border-white shadow-md"
+                                                , src photoSrc
+                                                ]
+                                                []
 
                                         Nothing ->
                                             div [] []
@@ -544,7 +548,7 @@ reportsResolutionsView cReports =
                                 [ Icon.viewIcon Icon.heart
                                 ]
                             , div []
-                                [ img [ class "h-32 w-32 rounded-full mx-2 mb-2", src missing.report.humanContact.avatar ] []
+                                [ img [ class "h-32 w-32 rounded-full mx-2 mb-2 border-2 border-white shadow-md", src missing.report.humanContact.avatar ] []
                                 , text missing.report.humanContact.name
                                 ]
                             ]
