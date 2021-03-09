@@ -15,6 +15,8 @@ The target platforms is the web, and mobile by the use of progressive web apps.
 
 Temporarily you can find the experiments at https://santuario.zequez.space (It's in spanish for now!)
 
+(if it fails to load keep trying, CloudFlare sometimes doesn't like IPFS, if anyone knows how to fix this please tell me, if it keeps failing I'll just use Github pages, Netlify or something like that)
+
 ## A patchwork of tools
 
 The purpose of this repository is not only to build, but also to document
