@@ -12,22 +12,23 @@
 --    ╚═╝    ╚═════╝  ╚═════╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝    ╚══════╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
 
 
-module FamilyRecovery exposing (main)
+module FamilyRecovery.Main exposing (main)
 
 import Browser
 import Date exposing (Date, fromCalendarDate)
+import FamilyRecovery.Sex as Sex
+import FamilyRecovery.Specie as Specie
 import FontAwesome.Brands as Icon
 import FontAwesome.Icon as Icon exposing (Icon)
+import FontAwesome.Solid as Icon
 import FontAwesome.Styles
-import Html exposing (Html, a, button, div, h2, img, input, node, option, p, select, span, text)
-import Html.Attributes exposing (attribute, class, href, placeholder, src, style, target, title, value)
+import Html exposing (Html, a, br, button, div, h2, img, input, node, option, p, select, span, text)
+import Html.Attributes exposing (attribute, class, classList, href, placeholder, src, style, target, title, value)
 import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
 import Regex
 import Round
-import Sex
-import Specie
 import Task exposing (Task)
 import Time
 
@@ -347,11 +348,33 @@ view model =
                     reportPageView report
 
                 Nothing ->
-                    div [ class "container mx-auto p-4" ]
+                    div [ class "container mx-auto p-4 pb-20" ]
                         [ filterView
                         , reportsListView contextualizedReports
                         ]
             ]
+        , tabsView
+        ]
+
+
+tabButton : String -> Icon -> Bool -> Html Msg
+tabButton label icon active =
+    button
+        [ class "flex-grow tracking-wide uppercase font-bold hover:bg-yellow-400 focus:bg-yellow-400 focus:outline-none"
+        , classList [ ( "bg-yellow-400", active ) ]
+        ]
+        [ span [ class "text-xl" ] [ Icon.viewIcon icon ]
+        , br [] []
+        , text label
+        ]
+
+
+tabsView : Html Msg
+tabsView =
+    div [ class "flex fixed z-20 inset-x-0 bottom-0 h-16 bg-yellow-300 text-white" ]
+        [ tabButton "Separados" Icon.heartBroken True
+        , tabButton "Encontrades" Icon.binoculars False
+        , tabButton "Reunidos" Icon.heart False
         ]
 
 

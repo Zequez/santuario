@@ -1,4 +1,4 @@
-module Specie exposing (Specie(..), all, emoji, fromSlug, htmlOption, label, toSlug)
+module FamilyRecovery.Specie exposing (Specie(..), all, emoji, fromSlug, htmlOption, label, toSlug)
 
 import Html exposing (Html, option, text)
 import Html.Attributes exposing (value)

@@ -1,4 +1,4 @@
-module Sex exposing (Sex(..), all, color, fromSlug, htmlOption, icon, label, toSlug)
+module FamilyRecovery.Sex exposing (Sex(..), all, color, fromSlug, htmlOption, icon, label, toSlug)
 
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
