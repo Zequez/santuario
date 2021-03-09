@@ -44,7 +44,6 @@ import Time
 
 type alias Model =
     { player : Player
-    , reports : List MissingReport
     , geolocation : GeoLocation
     , searchKm : Float
     , today : Date
@@ -57,35 +56,68 @@ type alias Model =
 
 type alias Player =
     { alias : String
+    , humans : List Human
+    , animals : List Animal
+    , reports : List Report
+    , reportsResolutions : List ReportsResolution
+    }
+
+
+type alias Human =
+    { id : String
+    , alias : String
     , name : String
     , phone : String
     , email : String
     , avatar : String
+    , bio : String
     }
 
 
-type alias MissingReport =
-    { id : String
-    , player : Player
-    , animal : Animal
-    , spaceTime : SpaceTime
-    }
 
-
-type alias ContextualizedMissingReport =
-    { report : MissingReport
-    , daysAgo : Int
-    , kmAway : Maybe Float
-    }
+-- type alias Home =
+--     { id : String
+--     , name : String
+--     , location : List ( Float, Float )
+--     }
 
 
 type alias Animal =
-    { name : String
+    { id : String
+    , family : List Human
+    , name : String
     , specie : Specie.Specie
     , sex : Sex.Sex
-    , description : String
-    , contact : String
+    , bio : String
     , photos : List String
+    }
+
+
+type alias Report =
+    { id : String
+    , animal : Animal
+    , humanContact : Human
+    , spaceTime : SpaceTime
+    , notes : String
+    , reportType : ReportType
+    }
+
+
+type ReportType
+    = Missing
+    | Found
+
+
+type alias ReportsResolution =
+    { reports : List Report
+    , date : Date
+    }
+
+
+type alias ContextualizedReport =
+    { report : Report
+    , daysAgo : Int
+    , kmAway : Maybe Float
     }
 
 
@@ -108,83 +140,91 @@ type alias SpaceTime =
 --------    ╚═╝   ╚══════╝╚══════╝   ╚═╝       ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝
 
 
-testPlayer : Player
-testPlayer =
-    { alias = "Zequez"
+human1 : Human
+human1 =
+    { id = "human1"
+    , alias = "Zequez"
     , name = "Ezequiel Schwartzman"
     , email = "zequez@gmail.com"
     , phone = "+54 9 223 5235568"
     , avatar = "https://en.gravatar.com/userimage/10143531/5dea71d35686673d0d93a3d0de968b64.png?size=200"
+    , bio = ""
     }
 
 
-testAnimal : Animal
-testAnimal =
-    { name = "Marley"
+animal1 : Animal
+animal1 =
+    { id = "animal1"
+    , family = [ human1 ]
+    , name = "Marley"
     , specie = Specie.Dog
     , sex = Sex.Male
-    , description = "He's a good boy"
-    , contact = "Call Zequez @ +5492235235568"
+    , bio = "He's a good boy"
     , photos = [ "https://placekitten.com/200/200" ]
     }
 
 
-testAnimal2 : Animal
-testAnimal2 =
-    { name = "Meri"
+animal2 : Animal
+animal2 =
+    { id = "animal2"
+    , family = [ human1 ]
+    , name = "Meri"
     , specie = Specie.Cat
     , sex = Sex.Female
-    , description = "She's a little timid. Mancha marron."
-    , contact = "Call Zequez @ +5492235235568"
+    , bio = "She's a little timid. Mancha marron."
     , photos = [ "https://placekitten.com/225/225" ]
     }
 
 
-testAnimal3 : Animal
-testAnimal3 =
-    { testAnimal2 | name = "Popote", photos = [ "https://placekitten.com/220/220" ] }
+animal3 : Animal
+animal3 =
+    { animal2 | name = "Popote", photos = [ "https://placekitten.com/220/220" ] }
 
 
-testAnimal4 : Animal
-testAnimal4 =
-    { testAnimal2 | name = "Mark", photos = [ "https://placekitten.com/210/210" ] }
+animal4 : Animal
+animal4 =
+    { animal1 | name = "Mark", photos = [ "https://placekitten.com/210/210" ] }
 
 
-testReports : List MissingReport
-testReports =
-    [ { id = "one"
-      , player = testPlayer
-      , animal = testAnimal
-      , spaceTime =
-            { date = Date.fromCalendarDate 2021 Time.Feb 4
-            , location = ( -38.0631442, -57.5572745 )
-            }
-      }
-    , { id = "two"
-      , player = testPlayer
-      , animal = testAnimal2
-      , spaceTime =
-            { date = Date.fromCalendarDate 2021 Time.Jan 22
-            , location = ( -38.0139405, -57.5610563 )
-            }
-      }
-    , { id = "three"
-      , player = testPlayer
-      , animal = testAnimal3
-      , spaceTime =
-            { date = Date.fromCalendarDate 2021 Time.Jan 4
-            , location = ( -38.0431048, -57.5694195 )
-            }
-      }
-    , { id = "four"
-      , player = testPlayer
-      , animal = testAnimal4
-      , spaceTime =
-            { date = Date.fromCalendarDate 2020 Time.Dec 14
-            , location = ( -37.9777782, -57.5753418 )
-            }
-      }
-    ]
+report1 : Report
+report1 =
+    { id = "report1"
+    , animal = animal1
+    , humanContact = human1
+    , spaceTime =
+        { date = Date.fromCalendarDate 2021 Time.Feb 4
+        , location = ( -38.0631442, -57.5572745 )
+        }
+    , notes = "Additional notes of the report..."
+    , reportType = Missing
+    }
+
+
+player1 : Player
+player1 =
+    { alias = "Zequez"
+    , humans = [ human1 ]
+    , animals = [ animal1, animal2, animal3, animal4 ]
+    , reports =
+        [ report1
+        , { report1
+            | id = "report2"
+            , animal = animal2
+            , spaceTime = { date = Date.fromCalendarDate 2021 Time.Jan 22, location = ( -38.0139405, -57.5610563 ) }
+          }
+        , { report1
+            | id = "report3"
+            , animal = animal3
+            , spaceTime = { date = Date.fromCalendarDate 2021 Time.Jan 4, location = ( -38.0431048, -57.5694195 ) }
+          }
+        , { report1
+            | id = "report4"
+            , animal = animal4
+            , spaceTime = { date = Date.fromCalendarDate 2020 Time.Dec 14, location = ( -37.9777782, -57.5753418 ) }
+          }
+        ]
+    , reportsResolutions = []
+    }
 
 
 
@@ -198,8 +238,7 @@ testReports =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { player = testPlayer
-      , reports = testReports
+    ( { player = player1
       , geolocation = Nothing
       , searchKm = 5.0
       , today = Date.fromCalendarDate 2020 Time.Jan 1
@@ -248,7 +287,7 @@ update msg model =
         OpenReport id ->
             ( { model
                 | viewing =
-                    if List.any (\r -> r.id == id) model.reports then
+                    if List.any (\r -> r.id == id) model.player.reports then
                         Just id
 
                     else
@@ -313,11 +352,11 @@ view : Model -> Browser.Document Msg
 view model =
     let
         filteredReports =
-            model.reports
+            model.player.reports
                 |> List.filter
                     (\r ->
                         (searchString r.animal.name model.query
-                            || searchString r.animal.description model.query
+                            || searchString r.animal.bio model.query
                         )
                             && maybeFilter model.querySpecie r.animal.specie
                             && maybeFilter model.querySex r.animal.sex
@@ -328,7 +367,7 @@ view model =
                 |> List.map (contextualizeReport model.today model.geolocation)
                 |> List.sortBy .daysAgo
 
-        maybeViewingReport : Maybe ContextualizedMissingReport
+        maybeViewingReport : Maybe ContextualizedReport
         maybeViewingReport =
             model.viewing
                 |> Maybe.andThen
@@ -378,7 +417,7 @@ tabsView =
         ]
 
 
-reportPageView : ContextualizedMissingReport -> Html Msg
+reportPageView : ContextualizedReport -> Html Msg
 reportPageView cReport =
     let
         report =
@@ -387,8 +426,8 @@ reportPageView cReport =
         animal =
             report.animal
 
-        player =
-            report.player
+        human =
+            report.humanContact
     in
     div [ class "absolute inset-0 bg-green-600 z-30" ]
         [ buttonBackView report.animal.name (OpenReport "")
@@ -420,23 +459,23 @@ reportPageView cReport =
                     ]
                 ]
             , div [ class "p-4" ]
-                [ p [ class "mb-4" ] [ text report.animal.description ]
+                [ p [ class "mb-4" ] [ text report.animal.bio ]
                 , h2 [ class "text-2xl mb-2" ] [ text "Datos de contacto" ]
                 , div [ class "bg-yellow-400 bg-opacity-25 rounded-md overflow-hidden" ]
                     [ div [ class "flex" ]
-                        [ img [ src player.avatar, class "h-24 w-24" ] []
+                        [ img [ src human.avatar, class "h-24 w-24" ] []
                         , div [ class "flex-grow p-2" ]
                             [ div [ class "text-xl" ]
-                                [ text player.alias
-                                , span [ class "text-white text-sm text-opacity-75" ] [ text (" (" ++ player.name ++ ")") ]
+                                [ text human.alias
+                                , span [ class "text-white text-sm text-opacity-75" ] [ text (" (" ++ human.name ++ ")") ]
                                 ]
                             , div [ class "flex" ]
                                 [ div [ class "flex-grow" ]
-                                    [ div [] [ text player.email ]
-                                    , div [] [ text player.phone ]
+                                    [ div [] [ text human.email ]
+                                    , div [] [ text human.phone ]
                                     ]
                                 , a
-                                    [ href ("https://api.whatsapp.com/send?phone=" ++ cleanPhoneNumber player.phone)
+                                    [ href ("https://api.whatsapp.com/send?phone=" ++ cleanPhoneNumber human.phone)
                                     , class "flex items-center bg-green-500 rounded-md px-4 font-bold"
                                     , target "_blank"
                                     ]
@@ -490,7 +529,7 @@ imageMarkersEncode imageMarkers =
             )
 
 
-reportToMarker : MissingReport -> ImageMarker
+reportToMarker : Report -> ImageMarker
 reportToMarker report =
     { src = Maybe.withDefault "" (List.head report.animal.photos)
     , lat = Tuple.first report.spaceTime.location
@@ -504,7 +543,7 @@ onMarkerClick message =
     on "markerClick" (JD.map message (JD.at [ "detail", "id" ] JD.string))
 
 
-mapView : List MissingReport -> Html Msg
+mapView : List Report -> Html Msg
 mapView reports =
     let
         markers : List ImageMarker
@@ -550,12 +589,12 @@ filterView =
         ]
 
 
-reportsListView : List ContextualizedMissingReport -> Html Msg
+reportsListView : List ContextualizedReport -> Html Msg
 reportsListView reports =
     div [ class "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" ] (List.map reportsCardView reports)
 
 
-reportsCardView : ContextualizedMissingReport -> Html Msg
+reportsCardView : ContextualizedReport -> Html Msg
 reportsCardView cReport =
     let
         animal =
@@ -611,19 +650,19 @@ reportsCardView cReport =
 --     div [ class "bg-white text-gray-800" ] [ text animal.name ]
 
 
-userCardView : Player -> Html msg
-userCardView user =
+humanCardView : Human -> Html msg
+humanCardView human =
     div [ class "p-4" ]
         [ img
             [ class "h-16 w-16 md:h-24 md:w-24 rounded-full mx-auto md:mx-0 md:mr-6 mb-4"
-            , src user.avatar
+            , src human.avatar
             ]
             []
         , div
             [ class "text-center md:text-left" ]
-            [ h2 [ class "text-lg" ] [ text user.name ]
-            , div [ class "text-gray-600" ] [ text user.email ]
-            , div [ class "text-gray-600" ] [ text user.phone ]
+            [ h2 [ class "text-lg" ] [ text human.name ]
+            , div [ class "text-gray-600" ] [ text human.email ]
+            , div [ class "text-gray-600" ] [ text human.phone ]
             ]
         ]
 
@@ -637,7 +676,7 @@ userCardView user =
 ---------------------- ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝╚══════╝
 
 
-contextualizeReport : Date -> GeoLocation -> MissingReport -> ContextualizedMissingReport
+contextualizeReport : Date -> GeoLocation -> Report -> ContextualizedReport
 contextualizeReport today geolocation report =
     { report = report
     , daysAgo = daysBetweenDates report.spaceTime.date today
