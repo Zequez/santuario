@@ -50,8 +50,15 @@ type alias Model =
     , query : String
     , querySex : Maybe Sex.Sex
     , querySpecie : Maybe Specie.Specie
+    , tab : Tab
     , viewing : Maybe String
     }
+
+
+type Tab
+    = MissingTab
+    | FoundTab
+    | ReunitedTab
 
 
 type alias Player =
@@ -59,7 +66,6 @@ type alias Player =
     , humans : List Human
     , animals : List Animal
     , reports : List Report
-    , reportsResolutions : List ReportsResolution
     }
 
 
@@ -100,7 +106,13 @@ type alias Report =
     , spaceTime : SpaceTime
     , notes : String
     , reportType : ReportType
+    , resolved : ReportResolution
     }
+
+
+type ReportResolution
+    = Unresolved
+    | Resolved ( Date, String ) -- ID of another report
 
 
 type ReportType
@@ -183,7 +195,26 @@ animal3 =
 
 animal4 : Animal
 animal4 =
-    { animal1 | name = "Mark", photos = [ "https://placekitten.com/210/210" ] }
+    { id = "animal4"
+    , family = []
+    , name = ""
+    , specie = Specie.Cat
+    , sex = Sex.Female
+    , bio = ""
+    , photos = [ "https://placekitten.com/270/270" ]
+    }
+
+
+animal5 : Animal
+animal5 =
+    { id = "animal2"
+    , family = []
+    , name = ""
+    , specie = Specie.Cat
+    , sex = Sex.Female
+    , bio = ""
+    , photos = [ "https://placekitten.com/225/225" ]
+    }
 
 
 report1 : Report
@@ -197,6 +228,47 @@ report1 =
         }
     , notes = "Additional notes of the report..."
     , reportType = Missing
+    , resolved = Unresolved
+    }
+
+
+report2 : Report
+report2 =
+    { report1
+        | id = "report2"
+        , animal = animal2
+        , spaceTime = { date = Date.fromCalendarDate 2021 Time.Jan 22, location = ( -38.0139405, -57.5610563 ) }
+    }
+
+
+report3 : Report
+report3 =
+    { report1
+        | id = "report3"
+        , animal = animal3
+        , spaceTime = { date = Date.fromCalendarDate 2021 Time.Jan 4, location = ( -38.0431048, -57.5694195 ) }
+        , resolved = Resolved ( Date.fromCalendarDate 2021 Time.Mar 7, "report5" )
+    }
+
+
+report4 : Report
+report4 =
+    { report1
+        | id = "report4"
+        , animal = animal4
+        , spaceTime = { date = Date.fromCalendarDate 2020 Time.Dec 14, location = ( -37.9777782, -57.5753418 ) }
+        , reportType = Found
+    }
+
+
+report5 : Report
+report5 =
+    { report1
+        | id = "report5"
+        , animal = animal5
+        , spaceTime = { date = Date.fromCalendarDate 2021 Time.Feb 17, location = ( -37.9477782, -57.5453418 ) }
+        , reportType = Found
+        , resolved = Resolved ( Date.fromCalendarDate 2021 Time.Mar 7, "report3" )
     }
 
 
@@ -207,23 +279,11 @@ player1 =
     , animals = [ animal1, animal2, animal3, animal4 ]
     , reports =
         [ report1
-        , { report1
-            | id = "report2"
-            , animal = animal2
-            , spaceTime = { date = Date.fromCalendarDate 2021 Time.Jan 22, location = ( -38.0139405, -57.5610563 ) }
-          }
-        , { report1
-            | id = "report3"
-            , animal = animal3
-            , spaceTime = { date = Date.fromCalendarDate 2021 Time.Jan 4, location = ( -38.0431048, -57.5694195 ) }
-          }
-        , { report1
-            | id = "report4"
-            , animal = animal4
-            , spaceTime = { date = Date.fromCalendarDate 2020 Time.Dec 14, location = ( -37.9777782, -57.5753418 ) }
-          }
+        , report2
+        , report3
+        , report4
+        , report5
         ]
-    , reportsResolutions = []
     }
 
 
@@ -246,6 +306,7 @@ init =
       , querySex = Nothing
       , querySpecie = Nothing
       , viewing = Nothing
+      , tab = MissingTab
       }
     , Date.today |> Task.perform ReceiveDate
     )
@@ -276,6 +337,7 @@ type Msg
     | SearchTyping String
     | PickSpecie String
     | PickSex String
+    | SetTab Tab
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -323,6 +385,9 @@ update msg model =
             , Cmd.none
             )
 
+        SetTab tab ->
+            ( { model | tab = tab }, Cmd.none )
+
 
 
 ---------------------------------------- ██╗   ██╗██╗███████╗██╗    ██╗███████╗
@@ -355,9 +420,19 @@ view model =
             model.player.reports
                 |> List.filter
                     (\r ->
-                        (searchString r.animal.name model.query
-                            || searchString r.animal.bio model.query
+                        (case model.tab of
+                            MissingTab ->
+                                r.reportType == Missing && r.resolved == Unresolved
+
+                            FoundTab ->
+                                r.reportType == Found && r.resolved == Unresolved
+
+                            ReunitedTab ->
+                                r.resolved /= Unresolved
                         )
+                            && (searchString r.animal.name model.query
+                                    || searchString r.animal.bio model.query
+                               )
                             && maybeFilter model.querySpecie r.animal.specie
                             && maybeFilter model.querySex r.animal.sex
                     )
@@ -389,18 +464,111 @@ view model =
                 Nothing ->
                     div [ class "container mx-auto p-4 pb-20" ]
                         [ filterView
-                        , reportsListView contextualizedReports
+                        , if model.tab == ReunitedTab then
+                            reportsResolutionsView contextualizedReports
+
+                          else
+                            reportsListView contextualizedReports
                         ]
             ]
-        , tabsView
+        , tabsView model.tab
         ]
 
 
-tabButton : String -> Icon -> Bool -> Html Msg
-tabButton label icon active =
+type alias ResolvedReportsPairs =
+    { missing : ContextualizedReport
+    , maybeFound : Maybe ContextualizedReport
+    , date : Date
+    }
+
+
+reportsResolutionsView : List ContextualizedReport -> Html Msg
+reportsResolutionsView cReports =
+    let
+        reportsPairs : List ResolvedReportsPairs
+        reportsPairs =
+            cReports
+                |> List.filterMap
+                    (\cr ->
+                        case ( cr.report.reportType, cr.report.resolved ) of
+                            ( Missing, Resolved ( date, id ) ) ->
+                                Just
+                                    { missing = cr
+                                    , maybeFound =
+                                        cReports
+                                            |> List.filter (\cr2 -> cr2.report.id == id)
+                                            |> List.head
+                                    , date = date
+                                    }
+
+                            ( _, _ ) ->
+                                Nothing
+                    )
+    in
+    div []
+        (reportsPairs
+            |> List.map
+                (\{ missing, maybeFound, date } ->
+                    div [ class "bg-white rounded-md p-4 text-black text-center text-xl" ]
+                        [ div [] [ text ("¡" ++ missing.report.animal.name ++ " se reencontró con su familia!") ]
+                        , div [ class "text-black text-opacity-50 mb-4" ]
+                            [ text
+                                ("Después de "
+                                    ++ String.fromInt (daysBetweenDates missing.report.spaceTime.date date)
+                                    ++ " días"
+                                    ++ (case maybeFound of
+                                            Just found ->
+                                                " a "
+                                                    ++ Round.round 1 (distanceBetweenPoints found.report.spaceTime.location missing.report.spaceTime.location)
+                                                    ++ "km de distancia"
+
+                                            Nothing ->
+                                                ""
+                                       )
+                                )
+                            ]
+                        , div [ class "flex items-center justify-center text-black text-opacity-50 text-xs" ]
+                            [ div []
+                                [ div [ class "relative" ]
+                                    [ img [ class "h-32 w-32 rounded-full mx-2 mb-2", src (Maybe.withDefault "" (List.head missing.report.animal.photos)) ] []
+                                    , case Maybe.andThen (\f -> List.head f.report.animal.photos) maybeFound of
+                                        Just photoSrc ->
+                                            img [ class "h-12 w-12 rounded-full absolute bottom-0 right-0", src photoSrc ] []
+
+                                        Nothing ->
+                                            div [] []
+                                    ]
+                                , text missing.report.animal.name
+                                ]
+                            , span [ class "text-red-500 text-6xl p-4 rounded-full" ]
+                                [ Icon.viewIcon Icon.heart
+                                ]
+                            , div []
+                                [ img [ class "h-32 w-32 rounded-full mx-2 mb-2", src missing.report.humanContact.avatar ] []
+                                , text missing.report.humanContact.name
+                                ]
+                            ]
+                        , case maybeFound of
+                            Just found ->
+                                p [ class "text-base mt-4" ]
+                                    [ text ("Gracias un reporte de " ++ found.report.humanContact.name)
+                                    ]
+
+                            Nothing ->
+                                div [] []
+                        ]
+                )
+        )
+
+
+tabButton : String -> Icon -> Bool -> Tab -> Html Msg
+tabButton label icon active tab =
     button
         [ class "flex-grow tracking-wide uppercase font-bold hover:bg-yellow-400 focus:bg-yellow-400 focus:outline-none"
-        , classList [ ( "bg-yellow-400", active ) ]
+        , classList
+            [ ( "bg-yellow-400", active )
+            ]
+        , onClick (SetTab tab)
         ]
         [ span [ class "text-xl" ] [ Icon.viewIcon icon ]
         , br [] []
@@ -408,12 +576,12 @@ tabButton label icon active =
         ]
 
 
-tabsView : Html Msg
-tabsView =
+tabsView : Tab -> Html Msg
+tabsView currentTab =
     div [ class "flex fixed z-20 inset-x-0 bottom-0 h-16 bg-yellow-300 text-white" ]
-        [ tabButton "Separados" Icon.heartBroken True
-        , tabButton "Encontrades" Icon.binoculars False
-        , tabButton "Reunidos" Icon.heart False
+        [ tabButton "Separades" Icon.heartBroken (currentTab == MissingTab) MissingTab
+        , tabButton "Encontrades" Icon.binoculars (currentTab == FoundTab) FoundTab
+        , tabButton "Reunides" Icon.heart (currentTab == ReunitedTab) ReunitedTab
         ]
 
 
@@ -429,8 +597,15 @@ reportPageView cReport =
         human =
             report.humanContact
     in
-    div [ class "absolute inset-0 bg-green-600 z-30" ]
-        [ buttonBackView report.animal.name (OpenReport "")
+    div [ class "absolute top-0 min-h-full w-full bg-green-600 z-30" ]
+        [ buttonBackView
+            (if animal.name == "" then
+                "Identidad desconocida"
+
+             else
+                animal.name
+            )
+            (OpenReport "")
         , div []
             (report.animal.photos
                 |> List.map (\p -> img [ src p, class "w-full" ] [])
@@ -452,7 +627,20 @@ reportPageView cReport =
                         ]
                     ]
                 , div [ class "flex" ]
-                    [ div [ class "flex-grow" ] [ text ("Desapareció hace " ++ String.fromInt cReport.daysAgo ++ " días") ]
+                    [ div [ class "flex-grow" ]
+                        [ text
+                            ((case report.reportType of
+                                Missing ->
+                                    "Desapareció"
+
+                                Found ->
+                                    "Encontrade"
+                             )
+                                ++ " hace "
+                                ++ String.fromInt cReport.daysAgo
+                                ++ " días"
+                            )
+                        ]
                     , span
                         [ class "text-white text-opacity-75" ]
                         [ text (Date.format "EEEE, d MMMM y" report.spaceTime.date) ]
@@ -591,7 +779,8 @@ filterView =
 
 reportsListView : List ContextualizedReport -> Html Msg
 reportsListView reports =
-    div [ class "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" ] (List.map reportsCardView reports)
+    div [ class "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" ]
+        (List.map reportsCardView reports)
 
 
 reportsCardView : ContextualizedReport -> Html Msg
@@ -614,7 +803,12 @@ reportsCardView cReport =
         , div [ class "p-2 bg-white" ]
             [ div [ class "flex items-center" ]
                 [ div [ class "flex-grow" ]
-                    [ text report.animal.name ]
+                    [ if report.animal.name == "" then
+                        span [ class "text-black text-opacity-25" ] [ text "Identidad desconocida" ]
+
+                      else
+                        text report.animal.name
+                    ]
                 , div
                     [ class "flex items-center" ]
                     [ span [ title (Specie.label animal.specie) ]
@@ -640,29 +834,6 @@ reportsCardView cReport =
                         )
                     ]
                 ]
-            ]
-        ]
-
-
-
--- animalCardView : Animal -> Html msg
--- animalCardView animal =
---     div [ class "bg-white text-gray-800" ] [ text animal.name ]
-
-
-humanCardView : Human -> Html msg
-humanCardView human =
-    div [ class "p-4" ]
-        [ img
-            [ class "h-16 w-16 md:h-24 md:w-24 rounded-full mx-auto md:mx-0 md:mr-6 mb-4"
-            , src human.avatar
-            ]
-            []
-        , div
-            [ class "text-center md:text-left" ]
-            [ h2 [ class "text-lg" ] [ text human.name ]
-            , div [ class "text-gray-600" ] [ text human.email ]
-            , div [ class "text-gray-600" ] [ text human.phone ]
             ]
         ]
 
