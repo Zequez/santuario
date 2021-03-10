@@ -34,7 +34,7 @@ module.exports = {
     port: 3000,
   },
   buildOptions: {},
-  exclude: ["**/Sex.elm", "**/Specie.elm"],
+  exclude: ["**/Sex.elm", "**/Specie.elm", "**/BackHeader.elm"],
   routes: [],
   mount: {
     src: "/dist",

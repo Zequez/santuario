@@ -120,12 +120,6 @@ type ReportType
     | Found
 
 
-type alias ReportsResolution =
-    { reports : List Report
-    , date : Date
-    }
-
-
 type alias ContextualizedReport =
     { report : Report
     , daysAgo : Int
