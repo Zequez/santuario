@@ -16,7 +16,7 @@ type alias Model =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { showExplanation = False, cards = [ card1, card1 ] }
+    ( { showExplanation = False, cards = [ card1, card2 ] }
     , Cmd.none
     )
 
@@ -54,19 +54,89 @@ view model =
                 ]
             , div [ class "grid grid-cols-2 gap-4" ]
                 (model.cards
-                    |> List.map cardView
+                    |> List.map (\card -> [ genericCardView card, cardView card ])
+                    |> List.concat
                 )
             ]
         ]
 
 
+genericCardView : Card -> Html Msg
+genericCardView card =
+    div [ class "p-2 bg-green-100 rounded-md shadow-md border-green-300 border-4 text-black text-opacity-75" ]
+        [ div []
+            [ div [ class "p-2 font-bold" ] [ text "Hard data (all cards have this)" ]
+            , div [ class "flex flex-wrap justify-start" ]
+                [ atomStringView "UUID" (Maybe.withDefault "" card.uuid)
+                , atomStringView "CardKind" (cardKindToLabel card.kind)
+                , atomStringView "Player" (Maybe.withDefault "" card.owner)
+                , atomStringView "Copying" (Maybe.withDefault "" card.follow)
+                ]
+            , div [ class "p-2 font-bold" ] [ text "Soft data (arbitrary for each card)" ]
+            , div
+                [ class "flex flex-wrap justify-start" ]
+                (card.atoms
+                    |> List.map atomView
+                )
+            , div [ class "p-2" ] [ text "We could add other properties here that wouldn't be reflected on the rendered card; and removing properties used by the card would just make the spaces be empty or change the card rendering. Maybe the View can decide the card isn't valid and ignore it." ]
+            ]
+        ]
+
+
+atomView : Atom -> Html Msg
+atomView atom =
+    case atom of
+        Bio str ->
+            atomStringView "Bio" str
+
+        Name str ->
+            atomStringView "Name" str
+
+        Alias str ->
+            atomStringView "Alias" str
+
+        Sex sex ->
+            case sex of
+                Male ->
+                    atomStringView "Sex" "Male"
+
+                Female ->
+                    atomStringView "Sex" "Female"
+
+                OtherSex str ->
+                    atomStringView "Sex" str
+
+        Specie specie ->
+            case specie of
+                Dog ->
+                    atomStringView "Specie" "Dog"
+
+                Cat ->
+                    atomStringView "Specie" "Cat"
+
+                OtherSpecie str ->
+                    atomStringView "Specie" str
+
+        _ ->
+            div [] []
+
+
+atomStringView : String -> String -> Html Msg
+atomStringView label val =
+    div [ class "bg-green-400 rounded-md m-2 flex items-stretch" ]
+        [ span [ class "bg-yellow-300 bg-opacity-75 py-1 px-2 flex items-center" ] [ text label ]
+        , span [ class "px-2 flex items-center" ] [ text val ]
+        ]
+
+
 cardView : Card -> Html Msg
 cardView card =
-    case card.group of
+    case card.kind of
         Animal ->
             cardFrameView
                 { name = fetchAtomString PickName card.atoms
                 , alias = fetchAtomString PickAlias card.atoms
+                , imageSrc = fetchAtomString PickAvatar card.atoms
                 , cardType = "Animal"
                 , left = fetchAtomString PickSpecie card.atoms
                 , right = fetchAtomString PickSex card.atoms
@@ -80,6 +150,7 @@ cardView card =
 type alias CardFrame =
     { name : String
     , alias : String
+    , imageSrc : String
     , cardType : String
     , left : String
     , right : String
@@ -91,12 +162,21 @@ cardFrameView : CardFrame -> Html Msg
 cardFrameView cardFrame =
     div [ class "p-2 bg-green-100 rounded-md shadow-md border-green-300 border-4 text-black text-opacity-75" ]
         [ div [ class "mb-2" ]
-            [ text ("[" ++ cardFrame.cardType ++ "]")
-            , text (" " ++ cardFrame.name ++ " (" ++ cardFrame.alias ++ ")")
+            [ text ("[" ++ cardFrame.cardType ++ "] ")
+            , if cardFrame.name == "" then
+                span [ class "text-black text-opacity-25" ] [ text "Unknow name" ]
+
+              else
+                text cardFrame.name
+            , if cardFrame.alias == "" then
+                text ""
+
+              else
+                text (" (" ++ cardFrame.alias ++ ")")
             ]
         , div [ class "relative h-0", style "padding-top" "62%" ]
             [ div [ class "absolute inset-0 overflow-hidden rounded-md border-4 border-green-300" ]
-                [ img [ src "https://placekitten.com/200/200", class "object-fit w-full" ] []
+                [ img [ src cardFrame.imageSrc, class "object-fit w-full" ] []
                 ]
             ]
         , div [ class "flex mb-2" ]
@@ -192,7 +272,7 @@ ph txt =
 
 -- type alias UUID =
 --     String
--- type alias CardGroup =
+-- type alias CardKind =
 --     String
 -- type alias LinkGroup =
 --     String
@@ -201,24 +281,40 @@ ph txt =
 
 type alias Card =
     { uuid : Maybe String
-    , group : CardGroup
+    , kind : CardKind
     , follow : Maybe String
     , owner : Maybe String
     , atoms : List Atom
     }
 
 
-type CardGroup
+type CardKind
     = Human
     | Animal
     | Report
-    | CustomGroup String
+    | CustomKind String
+
+
+cardKindToLabel : CardKind -> String
+cardKindToLabel cardKind =
+    case cardKind of
+        Human ->
+            "Human"
+
+        Animal ->
+            "Animal"
+
+        Report ->
+            "Report"
+
+        CustomKind str ->
+            "Custom: " ++ str
 
 
 card1 : Card
 card1 =
     { uuid = Nothing
-    , group = Animal
+    , kind = Animal
     , follow = Nothing
     , owner = Nothing
     , atoms =
@@ -227,7 +323,23 @@ card1 =
         , Sex Male
         , Specie Cat
         , Bio "Barry is a very special cat, he likes catnip, lasagna, and has a lot of fur"
-        , Avatar "https://placekitten.com/200/200"
+        , Avatar "https://placekitten.com/350/250"
+        , Cover "/catlife.jpg"
+        ]
+    }
+
+
+card2 : Card
+card2 =
+    { uuid = Nothing
+    , kind = Animal
+    , follow = Nothing
+    , owner = Nothing
+    , atoms =
+        [ Sex Female
+        , Specie Dog
+        , Bio "We found this strange dog, near my home, it's very furry and barks weird. (all the images are from Placekitten.com)"
+        , Avatar "https://placekitten.com/400/400"
         , Cover "/catlife.jpg"
         ]
     }
@@ -292,6 +404,9 @@ unwrapString atom =
                 OtherSpecie str ->
                     str
 
+        Avatar str ->
+            str
+
         _ ->
             ""
 
@@ -351,6 +466,9 @@ matchAtom pickFrom atom =
         ( PickSex, Sex str ) ->
             Just (Sex str)
 
+        ( PickAvatar, Avatar str ) ->
+            Just (Avatar str)
+
         ( _, _ ) ->
             Nothing
 
@@ -375,7 +493,7 @@ matched1 =
 --     ]
 -- templateCards =
 --     [ [ { uuid = Nothing
---         , group = Human
+--         , kind = Human
 --         , follow = Nothing -- Another card to copy from
 --         , owner = Nothing -- Player UUID
 --         , atoms = []
