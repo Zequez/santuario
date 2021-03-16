@@ -15,6 +15,7 @@
 module FamilyRecovery.Main exposing (main)
 
 import Browser
+import Components.BackHeader as BackHeader
 import Date exposing (Date, fromCalendarDate)
 import FamilyRecovery.Sex as Sex
 import FamilyRecovery.Specie as Specie
@@ -447,9 +448,9 @@ view model =
                     )
     in
     Browser.Document docTitle
-        [ div [ class "text-white" ]
+        [ div [ class "text-white bg-gray-100" ]
             [ FontAwesome.Styles.css
-            , headerBackView docTitle
+            , BackHeader.view docTitle
             , mapView filteredReports
             , case maybeViewingReport of
                 Just report ->
@@ -503,7 +504,7 @@ reportsResolutionsView cReports =
         (reportsPairs
             |> List.map
                 (\{ missing, maybeFound, date } ->
-                    div [ class "bg-white rounded-md p-4 text-black text-center text-xl" ]
+                    div [ class "bg-white rounded-md p-4 text-black text-center text-xl border border-gray-300" ]
                         [ div [] [ text ("¡" ++ missing.report.animal.name ++ " se reencontró con su familia!") ]
                         , div [ class "text-black text-opacity-50 mb-4" ]
                             [ text
@@ -562,9 +563,9 @@ reportsResolutionsView cReports =
 tabButton : String -> Icon -> Bool -> Tab -> Html Msg
 tabButton label icon active tab =
     button
-        [ class "flex-grow tracking-wide uppercase font-bold hover:bg-yellow-400 focus:bg-yellow-400 focus:outline-none"
+        [ class "flex-grow tracking-wide uppercase font-bold hover:bg-green-400 focus:bg-green-400 focus:outline-none"
         , classList
-            [ ( "bg-yellow-400", active )
+            [ ( "bg-green-400", active )
             ]
         , onClick (SetTab tab)
         ]
@@ -576,7 +577,7 @@ tabButton label icon active tab =
 
 tabsView : Tab -> Html Msg
 tabsView currentTab =
-    div [ class "flex fixed z-20 inset-x-0 bottom-0 h-16 bg-yellow-300 text-white" ]
+    div [ class "flex fixed z-20 inset-x-0 bottom-0 h-16 bg-green-300 text-white" ]
         [ tabButton "Separades" Icon.heartBroken (currentTab == MissingTab) MissingTab
         , tabButton "Encontrades" Icon.binoculars (currentTab == FoundTab) FoundTab
         , tabButton "Reunides" Icon.heart (currentTab == ReunitedTab) ReunitedTab
@@ -679,16 +680,8 @@ reportPageView cReport =
 
 buttonBackView : String -> Msg -> Html Msg
 buttonBackView pageTitle msg =
-    div [ class "h-12 bg-yellow-400 bg-opacity-25 flex items-center" ]
+    div [ class "h-12 bg-green-400 flex items-center" ]
         [ button [ class "text-2xl w-12 text-center", onClick msg ] [ text "❮" ]
-        , div [ class "flex-grow font-semibold text-xl tracking-wider text-white" ] [ text pageTitle ]
-        ]
-
-
-headerBackView : String -> Html msg
-headerBackView pageTitle =
-    div [ class "h-12 bg-white bg-opacity-25 flex items-center" ]
-        [ a [ href "/", class "text-2xl w-12 text-center" ] [ text "❮" ]
         , div [ class "flex-grow font-semibold text-xl tracking-wider text-white" ] [ text pageTitle ]
         ]
 
@@ -753,19 +746,19 @@ filterView : Html Msg
 filterView =
     div [ class "mb-4" ]
         [ input
-            [ class "px-4 py-2 text-xl rounded-md w-full text-black"
+            [ class "px-4 py-2 text-xl rounded-md w-full text-black shadow-inner border border-gray-300 "
             , placeholder "Buscar..."
             , onInput SearchTyping
             ]
             []
         , div [ class "mt-4 text-black" ]
-            [ select [ class "p-2 rounded-md", onInput PickSpecie ]
+            [ select [ class "p-2 rounded-md border border-gray-300", onInput PickSpecie ]
                 (option [ value "all" ] [ text "Todas las especies" ]
                     :: (Specie.all
                             |> List.map Specie.htmlOption
                        )
                 )
-            , select [ class "p-2 rounded-md ml-4", onInput PickSex ]
+            , select [ class "p-2 rounded-md ml-4 border border-gray-300", onInput PickSex ]
                 (option [ value "all" ] [ text "Macho/Hembra" ]
                     :: (Sex.all
                             |> List.map Sex.htmlOption
@@ -790,7 +783,7 @@ reportsCardView cReport =
         report =
             cReport.report
     in
-    a [ class "bg-white text-gray-800 shadow-md overflow-hidden rounded-md cursor-pointer", onClick (OpenReport report.id) ]
+    a [ class "bg-white text-gray-800 shadow-md overflow-hidden rounded-md cursor-pointer border border-gray-300", onClick (OpenReport report.id) ]
         [ div [ class "h-40 overflow-hidden" ]
             [ img
                 [ class "object-cover w-full"

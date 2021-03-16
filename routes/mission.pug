@@ -1,0 +1,64 @@
+---
+layout: layout.njk
+title: Mission - Santuario
+script: index
+---
+
+include _includes/mixins
+
+.flex.flex-col.bg-gray-100.min-h-full
+  +header()
+  +middleBar("")
+
+  main.flex-grow.container.mx-auto.pt-4
+    .text-sm.font-light.opacity-90.max-w-lg.mx-auto
+      p.mb-2
+        | As we collectively awaken to new levels consciousness, the tools of
+        | competition that served us, no longer work for our interconnected communities.
+      p.mb-2
+        | The tools that we need are owned by no one, and serve everyone.
+      p.mb-2
+        | The tools that we need are built in a mindset of cooperation rather than of competition.
+      p.mb-2
+        | There are many existing tools that can be used by our organizations and communities
+        | to help us in our missions. Often, the knowledge of these tools is behind technical,
+        | cultural and language barriers.
+      p.mb-2
+        | The mission of Santuario is to serve everyone with tools of cooperation.
+        | We experiment with and review tools to discover new ways of using
+        | technology to play, work and learn together.
+
+
+
+
+//- mixin btn(href, text, target = "")
+//-   a.px-4.py-2.mb-4.w-full.bg-white.bg-opacity-25.text-center.rounded-md(href=href, target=target)= text
+
+//- .flex.flex-col.h-full.text-white.items-center
+//-   header.flex.flex-col.relative.justify-center.items-center.w-full.overflow-hidden(class="h-1/2 md:h-5/6")
+//-     .absolute.inset-0.overflow-hidden.z-10
+//-       img.object-cover.w-full.h-full(src="/splash.jpg")
+//-       .absolute.bottom-0.right-0.p-1.text-xs.bg-black.bg-opacity-50.rounded-tl-sm
+//-         | Foto por&nbsp;
+//-         a.text-yellow-200(href="https://unsplash.com/@clarabeukes?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText", target="_blank")
+//-           | @clarabeukes
+//-         | &nbsp;en&nbsp;
+//-         a.text-yellow-200(href="https://unsplash.com/s/photos/free-cows?utm_source=unsplash&amp;utm_medium=referral&amp;utm_content=creditCopyText", target="_blank")
+//-           | Unsplash
+//-     .relative.z-20.py-6.w-full.text-white.text-center(style="text-shadow: 0 0 3px rgba(0,0,0,0.75)")
+//-       .absolute.z-20.inset-0.bg-black.bg-opacity-25(style="filter: blur(10px); left: -30px; right: -30px;")
+//-       .relative.z-30.px-8
+//-         h1.text-5xl.font-thin.tracking-wider Santuario
+//-         p.font-light
+//-           | Imagina que las ciudades fuesen un santuario para la vida
+//-           br
+//-           | ¿Como trabajaríamos juntes? ¿Cómo nos coordinaríamos?
+//-   main.flex.flex-col.items-center.flex-grow.pt-4.text-xl.max-w-md
+//-     h2.mb-4.text-2xl.font-light Herramientas
+//-     +btn("/perdides", "Animales perdides y encontrades")
+//-     h2.mb-4.text-2xl.font-light Experimentos
+//-     +btn("/metacards", "Meta tarjetas #1")
+//-     +btn("/metacards2", "Meta tarjetas #2")
+//-     h2.mb-4.text-2xl.font-light Proyecto
+//-     +btn("https://github.com/Zequez/santuario", "Código fuente en Github", "_blank")
+//-     +btn("https://www.notion.so/Santuario-dddb4aa02d4b479d9f6b95cebb2a464f", "Plataforma de planificación", "_blank")

@@ -46,7 +46,7 @@ view : Model -> Browser.Document Msg
 view model =
     Browser.Document "Meta cards experiment"
         [ BackHeader.view "Meta cards experiment"
-        , div [ class "text-white p-4" ]
+        , div [ class "text-white p-4 bg-green-600" ]
             [ explanationView model.showExplanation
             , div [ class "text-3xl mb-4" ] [ text "Cards" ]
             , div [ class "mb-4 text-white text-opacity-75" ]
