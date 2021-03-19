@@ -10,8 +10,14 @@ import List.Extra
 import Time
 
 
+
+-- type alias Model =
+--     { board : Board
+--     }
+
+
 type alias Model =
-    { board : Board
+    { cards : List Card
     }
 
 
@@ -54,15 +60,13 @@ type alias Card =
     }
 
 
-computePlayersWeight : List Player -> List Player -> Dict String Int
-computePlayersWeight trustedPlayers excludePlayers =
 
-
-
-addPlayersWeight : List Player -> Dict String Int -> Dict String Int
-addPlayersWeight trustedPlayers playersWeight =
-    trustedPlayers
-        |> List.map (\player -> p.id)
+-- computePlayersWeight : List Player -> List Player -> Dict String Int
+-- computePlayersWeight trustedPlayers excludePlayers =
+-- addPlayersWeight : List Player -> Dict String Int -> Dict String Int
+-- addPlayersWeight trustedPlayers playersWeight =
+--     trustedPlayers
+--         |> List.map (\player -> p.id)
 
 
 addPlayerWeight : String -> Dict String Int -> Dict String Int

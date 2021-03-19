@@ -29,6 +29,7 @@
     "@snowpack/plugin-babel": "^2.1.6",
     "@snowpack/plugin-run-script": "^2.3.0",
     "elm-mapbox": "^4.1.0",
+    "fast-glob": "^3.2.5",
     "lit-element": "^2.4.0",
     "mapbox-gl": "^2.1.1",
     "snowpack-plugin-raw-file-loader": "^1.0.9"

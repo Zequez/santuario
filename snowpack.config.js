@@ -1,4 +1,16 @@
 const fs = require("fs");
+const fg = require("fast-glob");
+const { env } = require("process");
+
+function excludeEverythingButEntryPoints(entryPoints) {
+  return env.NODE_ENV === "development"
+    ? []
+    : fg
+        .sync("src/**/*.elm", {
+          ignore: entryPoints.map((v) => `**/${v}`),
+        })
+        .map((v) => v.replace(/^src\//, "**/"));
+}
 
 function rawificateFiles(filePaths) {
   filePaths.forEach((filePath) => {
@@ -35,7 +47,11 @@ module.exports = {
     output: "stream",
   },
   buildOptions: {},
-  exclude: ["**/Sex.elm", "**/Specie.elm", "**/BackHeader.elm"],
+  exclude: excludeEverythingButEntryPoints([
+    "Main.elm",
+    "MetaCards.elm",
+    "MetaCards2.elm",
+  ]),
   routes: [],
   mount: {
     src: "/dist",
