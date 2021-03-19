@@ -17,8 +17,13 @@ module FamilyRecovery.Main exposing (main)
 import Browser
 import Components.BackHeader as BackHeader
 import Date exposing (Date, fromCalendarDate)
+import FamilyRecovery.Animal as Animal
+import FamilyRecovery.Human as Human
+import FamilyRecovery.Player as Player
+import FamilyRecovery.Report as Report
 import FamilyRecovery.Sex as Sex
 import FamilyRecovery.Specie as Specie
+import FamilyRecovery.Utils as Utils
 import FontAwesome.Brands as Icon
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
@@ -44,8 +49,8 @@ import Time
 
 
 type alias Model =
-    { player : Player
-    , geolocation : GeoLocation
+    { player : Player.Player
+    , geolocation : Report.GeoLocation
     , searchKm : Float
     , today : Date
     , query : String
@@ -65,26 +70,7 @@ type Tab
 type Modal
     = NoModal
     | ViewReport String
-    | EditReport Report
-
-
-type alias Player =
-    { alias : String
-    , humans : List Human
-    , animals : List Animal
-    , reports : List Report
-    }
-
-
-type alias Human =
-    { id : String
-    , alias : String
-    , name : String
-    , phone : String
-    , email : String
-    , avatar : String
-    , bio : String
-    }
+    | EditReport Report.Report
 
 
 
@@ -93,202 +79,12 @@ type alias Human =
 --     , name : String
 --     , location : List ( Float, Float )
 --     }
-
-
-type alias Animal =
-    { id : String
-    , family : List Human
-    , name : String
-    , specie : Specie.Specie
-    , sex : Sex.Sex
-    , bio : String
-    , photos : List String
-    }
-
-
-type alias Report =
-    { id : String
-    , animal : Animal
-    , humanContact : Human
-    , spaceTime : SpaceTime
-    , notes : String
-    , reportType : ReportType
-    , resolved : ReportResolution
-    }
-
-
-type ReportResolution
-    = Unresolved
-    | Resolved ( Date, String ) -- ID of another report
-
-
-type ReportType
-    = Missing
-    | Found
-
-
-type alias ContextualizedReport =
-    { report : Report
-    , daysAgo : Int
-    , kmAway : Maybe Float
-    }
-
-
-type alias GeoLocation =
-    Maybe ( Float, Float )
-
-
-type alias SpaceTime =
-    { date : Date
-    , location : ( Float, Float )
-    }
-
-
-
 -------- ████████╗███████╗███████╗████████╗    ██████╗  █████╗ ████████╗ █████╗
 -------- ╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝    ██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗
 --------    ██║   █████╗  ███████╗   ██║       ██║  ██║███████║   ██║   ███████║
 --------    ██║   ██╔══╝  ╚════██║   ██║       ██║  ██║██╔══██║   ██║   ██╔══██║
 --------    ██║   ███████╗███████║   ██║       ██████╔╝██║  ██║   ██║   ██║  ██║
 --------    ╚═╝   ╚══════╝╚══════╝   ╚═╝       ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝
-
-
-human1 : Human
-human1 =
-    { id = "human1"
-    , alias = "Zequez"
-    , name = "Ezequiel Schwartzman"
-    , email = "zequez@gmail.com"
-    , phone = "+54 9 223 5235568"
-    , avatar = "https://en.gravatar.com/userimage/10143531/5dea71d35686673d0d93a3d0de968b64.png?size=200"
-    , bio = ""
-    }
-
-
-animal1 : Animal
-animal1 =
-    { id = "animal1"
-    , family = [ human1 ]
-    , name = "Marley"
-    , specie = Specie.Dog
-    , sex = Sex.Male
-    , bio = "He's a good boy"
-    , photos = [ "https://placekitten.com/200/200" ]
-    }
-
-
-animal2 : Animal
-animal2 =
-    { id = "animal2"
-    , family = [ human1 ]
-    , name = "Meri"
-    , specie = Specie.Cat
-    , sex = Sex.Female
-    , bio = "She's a little timid. Mancha marron."
-    , photos = [ "https://placekitten.com/225/225" ]
-    }
-
-
-animal3 : Animal
-animal3 =
-    { animal2 | name = "Popote", photos = [ "https://placekitten.com/220/220" ] }
-
-
-animal4 : Animal
-animal4 =
-    { id = "animal4"
-    , family = []
-    , name = ""
-    , specie = Specie.Cat
-    , sex = Sex.Female
-    , bio = ""
-    , photos = [ "https://placekitten.com/270/270" ]
-    }
-
-
-animal5 : Animal
-animal5 =
-    { id = "animal2"
-    , family = []
-    , name = ""
-    , specie = Specie.Cat
-    , sex = Sex.Female
-    , bio = ""
-    , photos = [ "https://placekitten.com/225/225" ]
-    }
-
-
-report1 : Report
-report1 =
-    { id = "report1"
-    , animal = animal1
-    , humanContact = human1
-    , spaceTime =
-        { date = Date.fromCalendarDate 2021 Time.Feb 4
-        , location = ( -38.0631442, -57.5572745 )
-        }
-    , notes = "Additional notes of the report..."
-    , reportType = Missing
-    , resolved = Unresolved
-    }
-
-
-report2 : Report
-report2 =
-    { report1
-        | id = "report2"
-        , animal = animal2
-        , spaceTime = { date = Date.fromCalendarDate 2021 Time.Jan 22, location = ( -38.0139405, -57.5610563 ) }
-    }
-
-
-report3 : Report
-report3 =
-    { report1
-        | id = "report3"
-        , animal = animal3
-        , spaceTime = { date = Date.fromCalendarDate 2021 Time.Jan 4, location = ( -38.0431048, -57.5694195 ) }
-        , resolved = Resolved ( Date.fromCalendarDate 2021 Time.Mar 7, "report5" )
-    }
-
-
-report4 : Report
-report4 =
-    { report1
-        | id = "report4"
-        , animal = animal4
-        , spaceTime = { date = Date.fromCalendarDate 2020 Time.Dec 14, location = ( -37.9777782, -57.5753418 ) }
-        , reportType = Found
-    }
-
-
-report5 : Report
-report5 =
-    { report1
-        | id = "report5"
-        , animal = animal5
-        , spaceTime = { date = Date.fromCalendarDate 2021 Time.Feb 17, location = ( -37.9477782, -57.5453418 ) }
-        , reportType = Found
-        , resolved = Resolved ( Date.fromCalendarDate 2021 Time.Mar 7, "report3" )
-    }
-
-
-player1 : Player
-player1 =
-    { alias = "Zequez"
-    , humans = [ human1 ]
-    , animals = [ animal1, animal2, animal3, animal4 ]
-    , reports =
-        [ report1
-        , report2
-        , report3
-        , report4
-        , report5
-        ]
-    }
-
-
-
 ------------------------------------------------------ ██╗███╗   ██╗██╗████████╗
 ------------------------------------------------------ ██║████╗  ██║██║╚══██╔══╝
 ------------------------------------------------------ ██║██╔██╗ ██║██║   ██║
@@ -299,7 +95,7 @@ player1 =
 
 init : ( Model, Cmd Msg )
 init =
-    ( { player = player1
+    ( { player = Player.data1
       , geolocation = Nothing
       , searchKm = 5.0
       , today = Date.fromCalendarDate 2020 Time.Jan 1
@@ -424,13 +220,13 @@ view model =
                     (\r ->
                         (case model.tab of
                             MissingTab ->
-                                r.reportType == Missing && r.resolved == Unresolved
+                                r.reportType == Report.Missing && r.resolved == Report.Unresolved
 
                             FoundTab ->
-                                r.reportType == Found && r.resolved == Unresolved
+                                r.reportType == Report.Found && r.resolved == Report.Unresolved
 
                             ReunitedTab ->
-                                r.resolved /= Unresolved
+                                r.resolved /= Report.Unresolved
                         )
                             && (searchString r.animal.name model.query
                                     || searchString r.animal.bio model.query
@@ -441,7 +237,7 @@ view model =
 
         contextualizedReports =
             filteredReports
-                |> List.map (contextualizeReport model.today model.geolocation)
+                |> List.map (Report.contextualize model.today model.geolocation)
                 |> List.sortBy .daysAgo
 
         --     maybeViewingReport : Maybe ContextualizedReport
@@ -466,12 +262,12 @@ view model =
             [ class """
             fixed flex items-center justify-center z-40 mb-20 mr-4 bottom-0 right-0 w-16 h-16
             rounded-full bg-yellow-400 text-white font-bold text-2xl cursor-pointer"""
-            , onClick (SetModal (EditReport report1))
+            , onClick (SetModal (EditReport Report.data1))
             ]
             [ Icon.viewIcon Icon.plus ]
         , case model.modal of
             ViewReport id ->
-                case contextualizedReportFromId id contextualizedReports of
+                case Report.findById id contextualizedReports of
                     Just cReport ->
                         reportPageView cReport
 
@@ -495,13 +291,13 @@ view model =
 
 
 type alias ResolvedReportsPairs =
-    { missing : ContextualizedReport
-    , maybeFound : Maybe ContextualizedReport
+    { missing : Report.ContextualizedReport
+    , maybeFound : Maybe Report.ContextualizedReport
     , date : Date
     }
 
 
-reportsResolutionsView : List ContextualizedReport -> Html Msg
+reportsResolutionsView : List Report.ContextualizedReport -> Html Msg
 reportsResolutionsView cReports =
     let
         reportsPairs : List ResolvedReportsPairs
@@ -510,10 +306,10 @@ reportsResolutionsView cReports =
                 |> List.filterMap
                     (\cr ->
                         case ( cr.report.reportType, cr.report.resolved ) of
-                            ( Missing, Resolved ( date, id ) ) ->
+                            ( Report.Missing, Report.Resolved ( date, id ) ) ->
                                 Just
                                     { missing = cr
-                                    , maybeFound = contextualizedReportFromId id cReports
+                                    , maybeFound = Report.findById id cReports
                                     , date = date
                                     }
 
@@ -530,12 +326,12 @@ reportsResolutionsView cReports =
                         , div [ class "text-black text-opacity-50 mb-4" ]
                             [ text
                                 ("Después de "
-                                    ++ String.fromInt (daysBetweenDates missing.report.spaceTime.date date)
+                                    ++ String.fromInt (Utils.daysBetweenDates missing.report.spaceTime.date date)
                                     ++ " días"
                                     ++ (case maybeFound of
                                             Just found ->
                                                 " a "
-                                                    ++ Round.round 1 (distanceBetweenPoints found.report.spaceTime.location missing.report.spaceTime.location)
+                                                    ++ Round.round 1 (Utils.distanceBetweenPoints found.report.spaceTime.location missing.report.spaceTime.location)
                                                     ++ "km de distancia"
 
                                             Nothing ->
@@ -605,7 +401,7 @@ tabsView currentTab =
         ]
 
 
-reportPageView : ContextualizedReport -> Html Msg
+reportPageView : Report.ContextualizedReport -> Html Msg
 reportPageView cReport =
     let
         report =
@@ -650,10 +446,10 @@ reportPageView cReport =
                     [ div [ class "flex-grow" ]
                         [ text
                             ((case report.reportType of
-                                Missing ->
+                                Report.Missing ->
                                     "Desapareció"
 
-                                Found ->
+                                Report.Found ->
                                     "Encontrade"
                              )
                                 ++ " hace "
@@ -699,7 +495,7 @@ reportPageView cReport =
         ]
 
 
-editReportPageView : Report -> Html Msg
+editReportPageView : Report.Report -> Html Msg
 editReportPageView report =
     div [ class "fixed inset-0 bg-black bg-opacity-25 z-40 p-4" ]
         [ div [ class "bg-white rounded-md w-full h-full overflow-hidden flex flex-col" ]
@@ -752,7 +548,7 @@ imageMarkersEncode imageMarkers =
             )
 
 
-reportToMarker : Report -> ImageMarker
+reportToMarker : Report.Report -> ImageMarker
 reportToMarker report =
     { src = Maybe.withDefault "" (List.head report.animal.photos)
     , lat = Tuple.first report.spaceTime.location
@@ -766,7 +562,7 @@ onMarkerClick message =
     on "markerClick" (JD.map message (JD.at [ "detail", "id" ] JD.string))
 
 
-mapView : List Report -> Html Msg
+mapView : List Report.Report -> Html Msg
 mapView reports =
     let
         markers : List ImageMarker
@@ -812,13 +608,13 @@ filterView =
         ]
 
 
-reportsListView : List ContextualizedReport -> Html Msg
+reportsListView : List Report.ContextualizedReport -> Html Msg
 reportsListView reports =
     div [ class "grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4" ]
         (List.map reportsCardView reports)
 
 
-reportsCardView : ContextualizedReport -> Html Msg
+reportsCardView : Report.ContextualizedReport -> Html Msg
 reportsCardView cReport =
     let
         animal =
@@ -883,31 +679,6 @@ reportsCardView cReport =
 ---------------------- ██╔══██║██╔══╝  ██║     ██╔═══╝ ██╔══╝  ██╔══██╗╚════██║
 ---------------------- ██║  ██║███████╗███████╗██║     ███████╗██║  ██║███████║
 ---------------------- ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝╚══════╝
-
-
-contextualizeReport : Date -> GeoLocation -> Report -> ContextualizedReport
-contextualizeReport today geolocation report =
-    { report = report
-    , daysAgo = daysBetweenDates report.spaceTime.date today
-    , kmAway = Maybe.map (distanceBetweenPoints report.spaceTime.location) geolocation
-    }
-
-
-contextualizedReportFromId : String -> List ContextualizedReport -> Maybe ContextualizedReport
-contextualizedReportFromId id cReports =
-    cReports
-        |> List.filter (\cr2 -> cr2.report.id == id)
-        |> List.head
-
-
-distanceBetweenPoints : ( Float, Float ) -> ( Float, Float ) -> Float
-distanceBetweenPoints ( lat1, lng1 ) ( lat2, lng2 ) =
-    2.5
-
-
-daysBetweenDates : Date -> Date -> Int
-daysBetweenDates from to =
-    Date.toRataDie to - Date.toRataDie from
 
 
 cleanPhoneNumber : String -> String
