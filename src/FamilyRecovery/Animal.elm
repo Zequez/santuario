@@ -19,7 +19,7 @@ type alias Animal =
 data1 : Animal
 data1 =
     { id = "animal1"
-    , family = [ Human.data1 ]
+    , family = [ Human.data1, Human.data2 ]
     , name = "Marley"
     , specie = Specie.Dog
     , sex = Sex.Male

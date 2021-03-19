@@ -17,6 +17,7 @@ import Browser
 import Components.BackHeader as BackHeader
 import Date exposing (Date)
 import FamilyRecovery.Animal as Animal
+import FamilyRecovery.Card as Card
 import FamilyRecovery.Human as Human
 import FamilyRecovery.Mapbox as Mapbox
 import FamilyRecovery.Modal as Modal
@@ -259,7 +260,7 @@ view model =
                         div [] []
 
             EditReport report ->
-                reportEditModalView report
+                reportEditModalView model.player report
 
             NoModal ->
                 div [] []
@@ -471,34 +472,108 @@ reportShowModalView cReport =
         )
 
 
-reportEditModalView : Report.Report -> Html Msg
-reportEditModalView report =
+reportEditModalView : Player.Player -> Report.Report -> Html Msg
+reportEditModalView player report =
     Modal.view "Nuevo Reporte"
         (SetModal NoModal)
         (div [ class "text-black p-4" ]
-            [ div [] [ text "Jugador" ]
-            , div [] [ text "Humano" ]
-            , div [] [ text "Animal" ]
-            , div [] [ text "Reporte" ]
+            [ div [ class "mb-4" ] [ Card.view "Jugador" (text player.alias) ]
+            , div [ class "mb-4 text-xl" ] [ text "Contacto primario" ]
+            , div [ class "mb-4" ] [ Human.cardView report.humanContact ]
+            , div [ class "mb-4 text-xl" ] [ text "Ser" ]
+            , div [ class "mb-4" ] [ animalCardView report.animal ]
+            , div [ class "mb-4 text-xl" ] [ text "Información del evento" ]
+            , div [ class "flex justify-end" ]
+                [ button [ class "bg-yellow-300 py-2 px-4 rounded-md text-white font-bold tracking-wider uppercase" ]
+                    [ text "Publicar reporte"
+                    ]
+                ]
             ]
         )
 
 
+animalCardView : Animal.Animal -> Html msg
+animalCardView animal =
+    Card.view "Animal"
+        (div [ class "flex" ]
+            [ div [ class "h-32 w-32 overflow-hidden rounded-md" ]
+                [ animal.photos
+                    |> List.head
+                    |> Maybe.andThen (\photoSrc -> Just (img [ src photoSrc, class "object-cover w-full" ] []))
+                    |> Maybe.withDefault (text "No photo")
+                ]
+            , div [ class "ml-4 flex-grow" ]
+                [ div [ class "text-xl mb-1" ]
+                    [ input [ placeholder "Nombre", value animal.name, class "w-full" ] []
+                    ]
+                , cardRow <|
+                    cardTagsWrapper
+                        [ cardTagView "Especie" (text (Specie.label animal.specie ++ " " ++ Specie.emoji animal.specie))
+                        , cardTagView "Sexo"
+                            (div [ class "flex items-center" ]
+                                [ text (Sex.label animal.sex)
+                                , span [ class "ml-1" ] [ Sex.fullIcon animal.sex ]
+                                ]
+                            )
+                        , cardHumansTagsView "Familia humana" animal.family
+                        ]
 
--- div [ class "fixed inset-0 bg-black bg-opacity-25 z-40 p-4" ]
---     [ div [ class "bg-white rounded-md w-full h-full overflow-hidden flex flex-col" ]
---         [ div [ class "relative h-16 bg-yellow-300 uppercase font-bold text-xl tracking-wider flex items-center justify-center" ]
---             [ text "Nuevo reporte"
---             , div
---                 [ class "absolute right-0 h-full w-16 bg-red-400 flex items-center justify-center text-3xl cursor-pointer"
---                 , onClick (SetModal NoModal)
---                 ]
---                 [ Icon.viewIcon Icon.times
---                 ]
---             ]
---         ,
---         ]
---     ]
+                -- , div [] [ text "Famila humana: " ]
+                , div [] [ cardTextBox "Bio" animal.bio ]
+                ]
+            ]
+        )
+
+
+cardRow : Html msg -> Html msg
+cardRow el =
+    div [ class "mb-4" ] [ el ]
+
+
+cardTagsWrapper : List (Html msg) -> Html msg
+cardTagsWrapper children =
+    div [ class "flex flex-wrap -m-1" ]
+        (children
+            |> List.map (\tag -> div [ class "m-1" ] [ tag ])
+        )
+
+
+cardTagView : String -> Html msg -> Html msg
+cardTagView label el =
+    div [ class "rounded-md bg-gray-200  text-sm overflow-hidden flex flex-inline" ]
+        [ div [ class "bg-yellow-400 uppercase text-xs flex items-center justify-center text-center text-white font-bold px-2" ]
+            [ text label ]
+        , div
+            [ class "px-2 flex items-center" ]
+            [ el ]
+        ]
+
+
+cardTextBox : String -> String -> Html msg
+cardTextBox label val =
+    div [ class "relative bg-gray-100 p-2 rounded-md border border-gray-200" ]
+        [ div [ class "absolute bg-yellow-400 top-0 left-0 -mt-2 ml-2 text-xs uppercase text-white font-bold px-1 rounded-sm" ]
+            [ text label
+            ]
+        , text val
+        ]
+
+
+cardHumansTagsView : String -> List Human.Human -> Html msg
+cardHumansTagsView label humans =
+    cardTagView label
+        (div [ class "flex flex-wrap" ]
+            (humans
+                |> List.map
+                    (\h ->
+                        span [ class "whitespace-nowrap" ]
+                            [ img [ src h.avatar, class "inline-block h-4 w-4 mr-1 rounded-full" ] []
+                            , text h.name
+                            ]
+                    )
+                |> List.intersperse (text ",")
+            )
+        )
 
 
 filterView : Html Msg
@@ -566,12 +641,7 @@ reportsCardView cReport =
                     [ class "flex items-center" ]
                     [ span [ title (Specie.label animal.specie) ]
                         [ text (Specie.emoji animal.specie) ]
-                    , div
-                        [ title (Sex.label animal.sex)
-                        , class "rounded-full text-white h-4 w-4 text-center text-xs ml-1"
-                        , style "background" (Sex.color animal.sex)
-                        ]
-                        [ Sex.icon animal.sex ]
+                    , span [ class "ml-1" ] [ Sex.fullIcon animal.sex ]
                     ]
                 ]
             , div [ class "flex text-xs text-gray-600" ]
