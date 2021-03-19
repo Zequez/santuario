@@ -253,7 +253,7 @@ view model =
             ViewReport id ->
                 case Report.findById id contextualizedReports of
                     Just cReport ->
-                        reportViewModalView cReport
+                        reportShowModalView cReport
 
                     Nothing ->
                         div [] []
@@ -400,8 +400,8 @@ tabsView currentTab =
         ]
 
 
-reportViewModalView : Report.ContextualizedReport -> Html Msg
-reportViewModalView cReport =
+reportShowModalView : Report.ContextualizedReport -> Html Msg
+reportShowModalView cReport =
     let
         report =
             cReport.report
@@ -426,7 +426,7 @@ reportViewModalView cReport =
                     |> List.map (\p -> img [ src p, class "w-full" ] [])
                 )
             , div [ class "tracking-wide" ]
-                [ div [ class "bg-yellow-400 bg-opacity-25 p-4 mb-2" ]
+                [ div [ class "bg-yellow-400 bg-opacity-75 p-4 mb-2" ]
                     [ div [ class "mb-2 flex" ]
                         [ div [ class "flex-grow" ]
                             [ span [ class "font-bold" ] [ text "Especie: " ]
@@ -461,34 +461,10 @@ reportViewModalView cReport =
                             [ text (Date.format "EEEE, d MMMM y" report.spaceTime.date) ]
                         ]
                     ]
-                , div [ class "p-4" ]
+                , div [ class "p-4 text-gray-700" ]
                     [ p [ class "mb-4" ] [ text report.animal.bio ]
-                    , h2 [ class "text-2xl mb-2" ] [ text "Datos de contacto" ]
-                    , div [ class "bg-yellow-400 bg-opacity-25 rounded-md overflow-hidden" ]
-                        [ div [ class "flex" ]
-                            [ img [ src human.avatar, class "h-24 w-24" ] []
-                            , div [ class "flex-grow p-2" ]
-                                [ div [ class "text-xl" ]
-                                    [ text human.alias
-                                    , span [ class "text-white text-sm text-opacity-75" ] [ text (" (" ++ human.name ++ ")") ]
-                                    ]
-                                , div [ class "flex" ]
-                                    [ div [ class "flex-grow" ]
-                                        [ div [] [ text human.email ]
-                                        , div [] [ text human.phone ]
-                                        ]
-                                    , a
-                                        [ href ("https://api.whatsapp.com/send?phone=" ++ cleanPhoneNumber human.phone)
-                                        , class "flex items-center bg-green-500 rounded-md px-4 font-bold"
-                                        , target "_blank"
-                                        ]
-                                        [ Icon.viewIcon Icon.whatsapp
-                                        , span [ class "ml-2" ] [ text "WhatsApp" ]
-                                        ]
-                                    ]
-                                ]
-                            ]
-                        ]
+                    , h2 [ class "text-2xl mb-2" ] [ text "Familia humana" ]
+                    , Human.cardView human
                     ]
                 ]
             ]
@@ -622,16 +598,6 @@ reportsCardView cReport =
 ---------------------- ██╔══██║██╔══╝  ██║     ██╔═══╝ ██╔══╝  ██╔══██╗╚════██║
 ---------------------- ██║  ██║███████╗███████╗██║     ███████╗██║  ██║███████║
 ---------------------- ╚═╝  ╚═╝╚══════╝╚══════╝╚═╝     ╚══════╝╚═╝  ╚═╝╚══════╝
-
-
-cleanPhoneNumber : String -> String
-cleanPhoneNumber phone =
-    let
-        regex =
-            Maybe.withDefault Regex.never (Regex.fromString "[^0-9]")
-    in
-    phone
-        |> Regex.replace regex (\_ -> "")
 
 
 normalizationRegex : Regex.Regex

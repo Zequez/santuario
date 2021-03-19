@@ -10,7 +10,7 @@ import Html.Events exposing (onClick)
 view : String -> msg -> Html msg -> Html msg
 view modalTitle onClose content =
     div [ class "fixed inset-0 z-40 p-2 md:p-4 overflow-auto" ]
-        [ div [ class "max-w-lg bg-white mx-auto rounded-md w-full overflow-hidden flex flex-col z-50 relative" ]
+        [ div [ class "bg-gray-100 max-w-lg bg-white mx-auto rounded-md w-full overflow-hidden flex flex-col z-50 relative" ]
             [ div [ class "relative h-16 bg-yellow-300 uppercase font-bold text-xl tracking-wider flex items-center justify-center" ]
                 [ text modalTitle
                 , div
