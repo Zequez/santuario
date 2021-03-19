@@ -52,7 +52,7 @@ type alias Model =
     , querySex : Maybe Sex.Sex
     , querySpecie : Maybe Specie.Specie
     , tab : Tab
-    , viewing : Maybe String
+    , modal : Modal
     }
 
 
@@ -60,6 +60,12 @@ type Tab
     = MissingTab
     | FoundTab
     | ReunitedTab
+
+
+type Modal
+    = NoModal
+    | ViewReport String
+    | EditReport Report
 
 
 type alias Player =
@@ -300,8 +306,8 @@ init =
       , query = ""
       , querySex = Nothing
       , querySpecie = Nothing
-      , viewing = Nothing
       , tab = MissingTab
+      , modal = NoModal
       }
     , Date.today |> Task.perform ReceiveDate
     )
@@ -309,7 +315,7 @@ init =
 
 main : Program () Model Msg
 main =
-    Browser.document
+    Browser.element
         { init = always init
         , update = update
         , view = view
@@ -328,11 +334,11 @@ main =
 
 type Msg
     = ReceiveDate Date
-    | OpenReport String
     | SearchTyping String
     | PickSpecie String
     | PickSex String
     | SetTab Tab
+    | SetModal Modal
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -341,18 +347,16 @@ update msg model =
         ReceiveDate date ->
             ( { model | today = date }, Cmd.none )
 
-        OpenReport id ->
-            ( { model
-                | viewing =
-                    if List.any (\r -> r.id == id) model.player.reports then
-                        Just id
-
-                    else
-                        Nothing
-              }
-            , Cmd.none
-            )
-
+        -- OpenReport id ->
+        --     ( { model
+        --         | viewing =
+        --             if List.any (\r -> r.id == id) model.player.reports then
+        --                 Just id
+        --             else
+        --                 Nothing
+        --       }
+        --     , Cmd.none
+        --     )
         SearchTyping query ->
             ( { model | query = query }, Cmd.none )
 
@@ -383,6 +387,9 @@ update msg model =
         SetTab tab ->
             ( { model | tab = tab }, Cmd.none )
 
+        SetModal modal ->
+            ( { model | modal = modal }, Cmd.none )
+
 
 
 ---------------------------------------- ██╗   ██╗██╗███████╗██╗    ██╗███████╗
@@ -408,7 +415,7 @@ maybeFilter maybeK val =
             True
 
 
-view : Model -> Browser.Document Msg
+view : Model -> Html Msg
 view model =
     let
         filteredReports =
@@ -437,36 +444,53 @@ view model =
                 |> List.map (contextualizeReport model.today model.geolocation)
                 |> List.sortBy .daysAgo
 
-        maybeViewingReport : Maybe ContextualizedReport
-        maybeViewingReport =
-            model.viewing
-                |> Maybe.andThen
-                    (\reportId ->
-                        contextualizedReports
-                            |> List.filter (\r -> r.report.id == reportId)
-                            |> List.head
-                    )
+        --     maybeViewingReport : Maybe ContextualizedReport
+        --     maybeViewingReport = case model.modal of
+        --         ViewReport id ->
+        --         EditReport report ->
+        --         NoModal -> Nothing
+        --         model.modal
+        --             |> Maybe.andThen
+        --                 (\reportId ->
+        --                     contextualizedReports
+        --                         |> List.filter (\r -> r.report.id == reportId)
+        --                         |> List.head
+        --                 )
     in
-    Browser.Document docTitle
-        [ div [ class "text-white bg-gray-100" ]
-            [ FontAwesome.Styles.css
-            , BackHeader.view docTitle
-            , mapView filteredReports
-            , case maybeViewingReport of
-                Just report ->
-                    reportPageView report
-
-                Nothing ->
-                    div [ class "container mx-auto p-4 pb-20" ]
-                        [ filterView
-                        , if model.tab == ReunitedTab then
-                            reportsResolutionsView contextualizedReports
-
-                          else
-                            reportsListView contextualizedReports
-                        ]
-            ]
+    div [ class "text-white bg-gray-100 min-h-full" ]
+        [ FontAwesome.Styles.css
+        , BackHeader.view docTitle
         , tabsView model.tab
+        , mapView filteredReports
+        , div
+            [ class """
+            fixed flex items-center justify-center z-40 mb-20 mr-4 bottom-0 right-0 w-16 h-16
+            rounded-full bg-yellow-400 text-white font-bold text-2xl cursor-pointer"""
+            , onClick (SetModal (EditReport report1))
+            ]
+            [ Icon.viewIcon Icon.plus ]
+        , case model.modal of
+            ViewReport id ->
+                case contextualizedReportFromId id contextualizedReports of
+                    Just cReport ->
+                        reportPageView cReport
+
+                    Nothing ->
+                        div [] []
+
+            EditReport report ->
+                editReportPageView report
+
+            NoModal ->
+                div [] []
+        , div [ class "container mx-auto p-4 pb-20" ]
+            [ filterView
+            , if model.tab == ReunitedTab then
+                reportsResolutionsView contextualizedReports
+
+              else
+                reportsListView contextualizedReports
+            ]
         ]
 
 
@@ -489,10 +513,7 @@ reportsResolutionsView cReports =
                             ( Missing, Resolved ( date, id ) ) ->
                                 Just
                                     { missing = cr
-                                    , maybeFound =
-                                        cReports
-                                            |> List.filter (\cr2 -> cr2.report.id == id)
-                                            |> List.head
+                                    , maybeFound = contextualizedReportFromId id cReports
                                     , date = date
                                     }
 
@@ -604,7 +625,7 @@ reportPageView cReport =
              else
                 animal.name
             )
-            (OpenReport "")
+            (SetModal (ViewReport ""))
         , div []
             (report.animal.photos
                 |> List.map (\p -> img [ src p, class "w-full" ] [])
@@ -678,6 +699,29 @@ reportPageView cReport =
         ]
 
 
+editReportPageView : Report -> Html Msg
+editReportPageView report =
+    div [ class "fixed inset-0 bg-black bg-opacity-25 z-40 p-4" ]
+        [ div [ class "bg-white rounded-md w-full h-full overflow-hidden flex flex-col" ]
+            [ div [ class "relative h-16 bg-yellow-300 uppercase font-bold text-xl tracking-wider flex items-center justify-center" ]
+                [ text "Nuevo reporte"
+                , div
+                    [ class "absolute right-0 h-full w-16 bg-red-400 flex items-center justify-center text-3xl cursor-pointer"
+                    , onClick (SetModal NoModal)
+                    ]
+                    [ Icon.viewIcon Icon.times
+                    ]
+                ]
+            , div [ class "text-black p-4" ]
+                [ div [] [ text "Jugador" ]
+                , div [] [ text "Humano" ]
+                , div [] [ text "Animal" ]
+                , div [] [ text "Reporte" ]
+                ]
+            ]
+        ]
+
+
 buttonBackView : String -> Msg -> Html Msg
 buttonBackView pageTitle msg =
     div [ class "h-12 bg-green-400 flex items-center" ]
@@ -736,7 +780,7 @@ mapView reports =
             , attribute "lat" "-38.0139405"
             , attribute "lng" "-57.5610563"
             , attribute "zoom" "10"
-            , onMarkerClick OpenReport
+            , onMarkerClick (SetModal << ViewReport)
             ]
             []
         ]
@@ -783,7 +827,10 @@ reportsCardView cReport =
         report =
             cReport.report
     in
-    a [ class "bg-white text-gray-800 shadow-md overflow-hidden rounded-md cursor-pointer border border-gray-300", onClick (OpenReport report.id) ]
+    a
+        [ class "bg-white text-gray-800 shadow-md overflow-hidden rounded-md cursor-pointer border border-gray-300"
+        , onClick (SetModal (ViewReport report.id))
+        ]
         [ div [ class "h-40 overflow-hidden" ]
             [ img
                 [ class "object-cover w-full"
@@ -844,6 +891,13 @@ contextualizeReport today geolocation report =
     , daysAgo = daysBetweenDates report.spaceTime.date today
     , kmAway = Maybe.map (distanceBetweenPoints report.spaceTime.location) geolocation
     }
+
+
+contextualizedReportFromId : String -> List ContextualizedReport -> Maybe ContextualizedReport
+contextualizedReportFromId id cReports =
+    cReports
+        |> List.filter (\cr2 -> cr2.report.id == id)
+        |> List.head
 
 
 distanceBetweenPoints : ( Float, Float ) -> ( Float, Float ) -> Float
