@@ -45,6 +45,16 @@ type alias SpaceTime =
     }
 
 
+reportTypeToLabel : ReportType -> String
+reportTypeToLabel reportType =
+    case reportType of
+        Missing ->
+            "Perdide"
+
+        Found ->
+            "Encontrade"
+
+
 contextualize : Date -> GeoLocation -> Report -> ContextualizedReport
 contextualize today geolocation report =
     { report = report

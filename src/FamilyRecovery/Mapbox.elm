@@ -6,6 +6,7 @@ import Html.Attributes exposing (attribute, class, style)
 import Html.Events exposing (on)
 import Json.Decode as JD
 import Json.Encode as JE
+import Tuple
 
 
 type alias ImageMarker =
@@ -44,8 +45,20 @@ onMarkerClick message =
     on "markerClick" (JD.map message (JD.at [ "detail", "id" ] JD.string))
 
 
-mapView : List Report.Report -> (String -> msg) -> Html msg
-mapView reports msg =
+onLocationChangeClick : (( Float, Float ) -> msg) -> Html.Attribute msg
+onLocationChangeClick message =
+    on "locationChange"
+        (JD.map message
+            (JD.map2
+                Tuple.pair
+                (JD.at [ "detail", "lat" ] JD.float)
+                (JD.at [ "detail", "lng" ] JD.float)
+            )
+        )
+
+
+imagesMapView : List Report.Report -> (String -> msg) -> Html msg
+imagesMapView reports msg =
     let
         markers : List ImageMarker
         markers =
@@ -62,3 +75,14 @@ mapView reports msg =
             ]
             []
         ]
+
+
+locationPickerMapView : ( Float, Float ) -> (( Float, Float ) -> msg) -> Html msg
+locationPickerMapView ( lat, lng ) msg =
+    node "mapbox-element"
+        [ attribute "lat" (String.fromFloat lat)
+        , attribute "lng" (String.fromFloat lng)
+        , attribute "zoom" "10"
+        , onLocationChangeClick msg
+        ]
+        []

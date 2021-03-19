@@ -30,7 +30,7 @@ import FontAwesome.Brands as Icon
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles
-import Html exposing (Html, a, br, button, div, h2, img, input, option, p, select, span, text)
+import Html exposing (Html, a, br, button, div, h2, hr, img, input, option, p, select, span, text)
 import Html.Attributes exposing (class, classList, href, placeholder, src, style, target, title, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as JD
@@ -137,6 +137,7 @@ type Msg
     | PickSex String
     | SetTab Tab
     | SetModal Modal
+    | EditReportSetLocation ( Float, Float )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -187,6 +188,25 @@ update msg model =
 
         SetModal modal ->
             ( { model | modal = modal }, Cmd.none )
+
+        EditReportSetLocation location ->
+            case model.modal of
+                EditReport report ->
+                    ( { model
+                        | modal =
+                            EditReport
+                                { report
+                                    | spaceTime =
+                                        { date = report.spaceTime.date
+                                        , location = location
+                                        }
+                                }
+                      }
+                    , Cmd.none
+                    )
+
+                _ ->
+                    ( model, Cmd.none )
 
 
 
@@ -246,7 +266,7 @@ view model =
         [ FontAwesome.Styles.css
         , BackHeader.view docTitle
         , tabsView model.tab
-        , Mapbox.mapView filteredReports (SetModal << ViewReport)
+        , Mapbox.imagesMapView filteredReports (SetModal << ViewReport)
         , actionButtonView (SetModal (EditReport Report.data1))
 
         -- Modals
@@ -478,11 +498,12 @@ reportEditModalView player report =
         (SetModal NoModal)
         (div [ class "text-black p-4" ]
             [ div [ class "mb-4" ] [ Card.view "Jugador" (text player.alias) ]
-            , div [ class "mb-4 text-xl" ] [ text "Contacto primario" ]
+            , div [ class "mb-4 text-xl" ] [ text "Contacto primario humano" ]
             , div [ class "mb-4" ] [ Human.cardView report.humanContact ]
-            , div [ class "mb-4 text-xl" ] [ text "Ser" ]
+            , div [ class "mb-4 text-xl" ] [ text "Información del animal perdide" ]
             , div [ class "mb-4" ] [ animalCardView report.animal ]
             , div [ class "mb-4 text-xl" ] [ text "Información del evento" ]
+            , div [ class "mb-4" ] [ shallowReportCardView report ]
             , div [ class "flex justify-end" ]
                 [ button [ class "bg-yellow-300 py-2 px-4 rounded-md text-white font-bold tracking-wider uppercase" ]
                     [ text "Publicar reporte"
@@ -492,11 +513,26 @@ reportEditModalView player report =
         )
 
 
+shallowReportCardView : Report.Report -> Html Msg
+shallowReportCardView report =
+    Card.view "Reporte"
+        (div []
+            [ cardRow <|
+                cardTagsWrapper
+                    [ cardTagView "Tipo" (text (Report.reportTypeToLabel report.reportType))
+                    , cardTagView "Fecha" (text "8 Feb 2021")
+                    ]
+            , cardRow <| div [] [ cardMapView "Lugar" report.spaceTime.location ]
+            , div [] [ cardTextBox "Notas" report.notes ]
+            ]
+        )
+
+
 animalCardView : Animal.Animal -> Html msg
 animalCardView animal =
     Card.view "Animal"
-        (div [ class "flex" ]
-            [ div [ class "h-32 w-32 overflow-hidden rounded-md" ]
+        (div [ class "flex items-start" ]
+            [ div [ class "w-32 overflow-hidden rounded-md" ]
                 [ animal.photos
                     |> List.head
                     |> Maybe.andThen (\photoSrc -> Just (img [ src photoSrc, class "object-cover w-full" ] []))
@@ -517,8 +553,6 @@ animalCardView animal =
                             )
                         , cardHumansTagsView "Familia humana" animal.family
                         ]
-
-                -- , div [] [ text "Famila humana: " ]
                 , div [] [ cardTextBox "Bio" animal.bio ]
                 ]
             ]
@@ -549,13 +583,28 @@ cardTagView label el =
         ]
 
 
+cardMapView : String -> ( Float, Float ) -> Html Msg
+cardMapView label location =
+    div [ class "relative" ]
+        [ cardLegendView label
+        , div [ class "h-60 bg-gray-100 rounded-md border border-gray-200" ]
+            [ Mapbox.locationPickerMapView location EditReportSetLocation
+            ]
+        ]
+
+
 cardTextBox : String -> String -> Html msg
 cardTextBox label val =
     div [ class "relative bg-gray-100 p-2 rounded-md border border-gray-200" ]
-        [ div [ class "absolute bg-yellow-400 top-0 left-0 -mt-2 ml-2 text-xs uppercase text-white font-bold px-1 rounded-sm" ]
-            [ text label
-            ]
+        [ cardLegendView label
         , text val
+        ]
+
+
+cardLegendView : String -> Html msg
+cardLegendView legendText =
+    div [ class "absolute bg-yellow-400 z-40 top-0 left-0 -mt-2 ml-2 text-xs uppercase text-white font-bold px-1 rounded-sm" ]
+        [ text legendText
         ]
 
 
