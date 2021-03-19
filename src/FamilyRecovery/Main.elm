@@ -1,3 +1,5 @@
+module FamilyRecovery.Main exposing (main)
+
 ----------------------------------------- ███████╗███╗   ███╗██╗██╗     ███████╗
 ----------------------------------------- ██╔════╝████╗ ████║██║██║     ██╔════╝
 ----------------------------------------- ███████╗██╔████╔██║██║██║     █████╗
@@ -11,14 +13,13 @@
 --    ██║   ╚██████╔╝╚██████╔╝    ██║  ██║██║  ██║███████╗    ███████╗██║ ╚████║╚██████╔╝╚██████╔╝╚██████╔╝██║  ██║
 --    ╚═╝    ╚═════╝  ╚═════╝     ╚═╝  ╚═╝╚═╝  ╚═╝╚══════╝    ╚══════╝╚═╝  ╚═══╝ ╚═════╝  ╚═════╝  ╚═════╝ ╚═╝  ╚═╝
 
-
-module FamilyRecovery.Main exposing (main)
-
 import Browser
 import Components.BackHeader as BackHeader
-import Date exposing (Date, fromCalendarDate)
+import Date exposing (Date)
 import FamilyRecovery.Animal as Animal
 import FamilyRecovery.Human as Human
+import FamilyRecovery.Mapbox as Mapbox
+import FamilyRecovery.Modal as Modal
 import FamilyRecovery.Player as Player
 import FamilyRecovery.Report as Report
 import FamilyRecovery.Sex as Sex
@@ -28,14 +29,14 @@ import FontAwesome.Brands as Icon
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles
-import Html exposing (Html, a, br, button, div, h2, img, input, node, option, p, select, span, text)
-import Html.Attributes exposing (attribute, class, classList, href, placeholder, src, style, target, title, value)
-import Html.Events exposing (on, onClick, onInput)
+import Html exposing (Html, a, br, button, div, h2, img, input, option, p, select, span, text)
+import Html.Attributes exposing (class, classList, href, placeholder, src, style, target, title, value)
+import Html.Events exposing (onClick, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
 import Regex
 import Round
-import Task exposing (Task)
+import Task
 import Time
 
 
@@ -239,46 +240,31 @@ view model =
             filteredReports
                 |> List.map (Report.contextualize model.today model.geolocation)
                 |> List.sortBy .daysAgo
-
-        --     maybeViewingReport : Maybe ContextualizedReport
-        --     maybeViewingReport = case model.modal of
-        --         ViewReport id ->
-        --         EditReport report ->
-        --         NoModal -> Nothing
-        --         model.modal
-        --             |> Maybe.andThen
-        --                 (\reportId ->
-        --                     contextualizedReports
-        --                         |> List.filter (\r -> r.report.id == reportId)
-        --                         |> List.head
-        --                 )
     in
     div [ class "text-white bg-gray-100 min-h-full" ]
         [ FontAwesome.Styles.css
         , BackHeader.view docTitle
         , tabsView model.tab
-        , mapView filteredReports
-        , div
-            [ class """
-            fixed flex items-center justify-center z-40 mb-20 mr-4 bottom-0 right-0 w-16 h-16
-            rounded-full bg-yellow-400 text-white font-bold text-2xl cursor-pointer"""
-            , onClick (SetModal (EditReport Report.data1))
-            ]
-            [ Icon.viewIcon Icon.plus ]
+        , Mapbox.mapView filteredReports (SetModal << ViewReport)
+        , actionButtonView (SetModal (EditReport Report.data1))
+
+        -- Modals
         , case model.modal of
             ViewReport id ->
                 case Report.findById id contextualizedReports of
                     Just cReport ->
-                        reportPageView cReport
+                        reportViewModalView cReport
 
                     Nothing ->
                         div [] []
 
             EditReport report ->
-                editReportPageView report
+                reportEditModalView report
 
             NoModal ->
                 div [] []
+
+        -- Tabs pages
         , div [ class "container mx-auto p-4 pb-20" ]
             [ filterView
             , if model.tab == ReunitedTab then
@@ -288,6 +274,17 @@ view model =
                 reportsListView contextualizedReports
             ]
         ]
+
+
+actionButtonView : msg -> Html msg
+actionButtonView msg =
+    div
+        [ class """
+            fixed flex items-center justify-center z-40 mb-20 mr-4 bottom-0 right-0 w-16 h-16
+            rounded-full bg-yellow-400 text-white font-bold text-2xl cursor-pointer"""
+        , onClick msg
+        ]
+        [ Icon.viewIcon Icon.plus ]
 
 
 type alias ResolvedReportsPairs =
@@ -319,62 +316,64 @@ reportsResolutionsView cReports =
     in
     div []
         (reportsPairs
-            |> List.map
-                (\{ missing, maybeFound, date } ->
-                    div [ class "bg-white rounded-md p-4 text-black text-center text-xl border border-gray-300" ]
-                        [ div [] [ text ("¡" ++ missing.report.animal.name ++ " se reencontró con su familia!") ]
-                        , div [ class "text-black text-opacity-50 mb-4" ]
-                            [ text
-                                ("Después de "
-                                    ++ String.fromInt (Utils.daysBetweenDates missing.report.spaceTime.date date)
-                                    ++ " días"
-                                    ++ (case maybeFound of
-                                            Just found ->
-                                                " a "
-                                                    ++ Round.round 1 (Utils.distanceBetweenPoints found.report.spaceTime.location missing.report.spaceTime.location)
-                                                    ++ "km de distancia"
+            |> List.map reportsResolutionPairView
+        )
 
-                                            Nothing ->
-                                                ""
-                                       )
-                                )
-                            ]
-                        , div [ class "flex items-center justify-center text-black text-opacity-50 text-xs" ]
-                            [ div []
-                                [ div [ class "relative" ]
-                                    [ img [ class "h-32 w-32 rounded-full mx-2 mb-2 border-2 border-white shadow-md", src (Maybe.withDefault "" (List.head missing.report.animal.photos)) ] []
-                                    , case Maybe.andThen (\f -> List.head f.report.animal.photos) maybeFound of
-                                        Just photoSrc ->
-                                            img
-                                                [ class "h-12 w-12 rounded-full absolute bottom-0 right-0 border-2 border-white shadow-md"
-                                                , src photoSrc
-                                                ]
-                                                []
 
-                                        Nothing ->
-                                            div [] []
-                                    ]
-                                , text missing.report.animal.name
-                                ]
-                            , span [ class "text-red-500 text-6xl p-4 rounded-full" ]
-                                [ Icon.viewIcon Icon.heart
-                                ]
-                            , div []
-                                [ img [ class "h-32 w-32 rounded-full mx-2 mb-2 border-2 border-white shadow-md", src missing.report.humanContact.avatar ] []
-                                , text missing.report.humanContact.name
-                                ]
-                            ]
-                        , case maybeFound of
+reportsResolutionPairView : ResolvedReportsPairs -> Html Msg
+reportsResolutionPairView { missing, maybeFound, date } =
+    div [ class "bg-white rounded-md p-4 text-black text-center text-xl border border-gray-300" ]
+        [ div [] [ text ("¡" ++ missing.report.animal.name ++ " se reencontró con su familia!") ]
+        , div [ class "text-black text-opacity-50 mb-4" ]
+            [ text
+                ("Después de "
+                    ++ String.fromInt (Utils.daysBetweenDates missing.report.spaceTime.date date)
+                    ++ " días"
+                    ++ (case maybeFound of
                             Just found ->
-                                p [ class "text-base mt-4" ]
-                                    [ text ("Gracias un reporte de " ++ found.report.humanContact.name)
-                                    ]
+                                " a "
+                                    ++ Round.round 1 (Utils.distanceBetweenPoints found.report.spaceTime.location missing.report.spaceTime.location)
+                                    ++ "km de distancia"
 
                             Nothing ->
-                                div [] []
-                        ]
+                                ""
+                       )
                 )
-        )
+            ]
+        , div [ class "flex items-center justify-center text-black text-opacity-50 text-xs" ]
+            [ div []
+                [ div [ class "relative" ]
+                    [ img [ class "h-32 w-32 rounded-full mx-2 mb-2 border-2 border-white shadow-md", src (Maybe.withDefault "" (List.head missing.report.animal.photos)) ] []
+                    , case Maybe.andThen (\f -> List.head f.report.animal.photos) maybeFound of
+                        Just photoSrc ->
+                            img
+                                [ class "h-12 w-12 rounded-full absolute bottom-0 right-0 border-2 border-white shadow-md"
+                                , src photoSrc
+                                ]
+                                []
+
+                        Nothing ->
+                            div [] []
+                    ]
+                , text missing.report.animal.name
+                ]
+            , span [ class "text-red-500 text-6xl p-4 rounded-full" ]
+                [ Icon.viewIcon Icon.heart
+                ]
+            , div []
+                [ img [ class "h-32 w-32 rounded-full mx-2 mb-2 border-2 border-white shadow-md", src missing.report.humanContact.avatar ] []
+                , text missing.report.humanContact.name
+                ]
+            ]
+        , case maybeFound of
+            Just found ->
+                p [ class "text-base mt-4" ]
+                    [ text ("Gracias un reporte de " ++ found.report.humanContact.name)
+                    ]
+
+            Nothing ->
+                div [] []
+        ]
 
 
 tabButton : String -> Icon -> Bool -> Tab -> Html Msg
@@ -401,8 +400,8 @@ tabsView currentTab =
         ]
 
 
-reportPageView : Report.ContextualizedReport -> Html Msg
-reportPageView cReport =
+reportViewModalView : Report.ContextualizedReport -> Html Msg
+reportViewModalView cReport =
     let
         report =
             cReport.report
@@ -413,173 +412,117 @@ reportPageView cReport =
         human =
             report.humanContact
     in
-    div [ class "absolute top-0 min-h-full w-full bg-green-600 z-30" ]
-        [ buttonBackView
-            (if animal.name == "" then
-                "Identidad desconocida"
+    Modal.view
+        (if animal.name == "" then
+            "Identidad desconocida"
 
-             else
-                animal.name
-            )
-            (SetModal (ViewReport ""))
-        , div []
-            (report.animal.photos
-                |> List.map (\p -> img [ src p, class "w-full" ] [])
-            )
-        , div [ class "tracking-wide" ]
-            [ div [ class "bg-yellow-400 bg-opacity-25 p-4 mb-2" ]
-                [ div [ class "mb-2 flex" ]
-                    [ div [ class "flex-grow" ]
-                        [ span [ class "font-bold" ] [ text "Especie: " ]
-                        , text (Specie.emoji report.animal.specie ++ " " ++ Specie.label report.animal.specie)
-                        ]
-                    , div [ class "flex items-center" ]
-                        [ div
-                            [ class "rounded-full text-white h-4 w-4 text-center text-xs mr-1"
-                            , style "background" (Sex.color animal.sex)
+         else
+            animal.name
+        )
+        (SetModal (ViewReport ""))
+        (div []
+            [ div []
+                (report.animal.photos
+                    |> List.map (\p -> img [ src p, class "w-full" ] [])
+                )
+            , div [ class "tracking-wide" ]
+                [ div [ class "bg-yellow-400 bg-opacity-25 p-4 mb-2" ]
+                    [ div [ class "mb-2 flex" ]
+                        [ div [ class "flex-grow" ]
+                            [ span [ class "font-bold" ] [ text "Especie: " ]
+                            , text (Specie.emoji report.animal.specie ++ " " ++ Specie.label report.animal.specie)
                             ]
-                            [ Sex.icon animal.sex ]
-                        , text (Sex.label animal.sex)
-                        ]
-                    ]
-                , div [ class "flex" ]
-                    [ div [ class "flex-grow" ]
-                        [ text
-                            ((case report.reportType of
-                                Report.Missing ->
-                                    "Desapareció"
-
-                                Report.Found ->
-                                    "Encontrade"
-                             )
-                                ++ " hace "
-                                ++ String.fromInt cReport.daysAgo
-                                ++ " días"
-                            )
-                        ]
-                    , span
-                        [ class "text-white text-opacity-75" ]
-                        [ text (Date.format "EEEE, d MMMM y" report.spaceTime.date) ]
-                    ]
-                ]
-            , div [ class "p-4" ]
-                [ p [ class "mb-4" ] [ text report.animal.bio ]
-                , h2 [ class "text-2xl mb-2" ] [ text "Datos de contacto" ]
-                , div [ class "bg-yellow-400 bg-opacity-25 rounded-md overflow-hidden" ]
-                    [ div [ class "flex" ]
-                        [ img [ src human.avatar, class "h-24 w-24" ] []
-                        , div [ class "flex-grow p-2" ]
-                            [ div [ class "text-xl" ]
-                                [ text human.alias
-                                , span [ class "text-white text-sm text-opacity-75" ] [ text (" (" ++ human.name ++ ")") ]
+                        , div [ class "flex items-center" ]
+                            [ div
+                                [ class "rounded-full text-white h-4 w-4 text-center text-xs mr-1"
+                                , style "background" (Sex.color animal.sex)
                                 ]
-                            , div [ class "flex" ]
-                                [ div [ class "flex-grow" ]
-                                    [ div [] [ text human.email ]
-                                    , div [] [ text human.phone ]
-                                    ]
-                                , a
-                                    [ href ("https://api.whatsapp.com/send?phone=" ++ cleanPhoneNumber human.phone)
-                                    , class "flex items-center bg-green-500 rounded-md px-4 font-bold"
-                                    , target "_blank"
-                                    ]
-                                    [ Icon.viewIcon Icon.whatsapp
-                                    , span [ class "ml-2" ] [ text "WhatsApp" ]
-                                    ]
-                                ]
+                                [ Sex.icon animal.sex ]
+                            , text (Sex.label animal.sex)
                             ]
                         ]
+                    , div [ class "flex" ]
+                        [ div [ class "flex-grow" ]
+                            [ text
+                                ((case report.reportType of
+                                    Report.Missing ->
+                                        "Desapareció"
+
+                                    Report.Found ->
+                                        "Encontrade"
+                                 )
+                                    ++ " hace "
+                                    ++ String.fromInt cReport.daysAgo
+                                    ++ " días"
+                                )
+                            ]
+                        , span
+                            [ class "text-white text-opacity-75" ]
+                            [ text (Date.format "EEEE, d MMMM y" report.spaceTime.date) ]
+                        ]
+                    ]
+                , div [ class "p-4" ]
+                    [ p [ class "mb-4" ] [ text report.animal.bio ]
+                    , h2 [ class "text-2xl mb-2" ] [ text "Datos de contacto" ]
+                    , div [ class "bg-yellow-400 bg-opacity-25 rounded-md overflow-hidden" ]
+                        [ div [ class "flex" ]
+                            [ img [ src human.avatar, class "h-24 w-24" ] []
+                            , div [ class "flex-grow p-2" ]
+                                [ div [ class "text-xl" ]
+                                    [ text human.alias
+                                    , span [ class "text-white text-sm text-opacity-75" ] [ text (" (" ++ human.name ++ ")") ]
+                                    ]
+                                , div [ class "flex" ]
+                                    [ div [ class "flex-grow" ]
+                                        [ div [] [ text human.email ]
+                                        , div [] [ text human.phone ]
+                                        ]
+                                    , a
+                                        [ href ("https://api.whatsapp.com/send?phone=" ++ cleanPhoneNumber human.phone)
+                                        , class "flex items-center bg-green-500 rounded-md px-4 font-bold"
+                                        , target "_blank"
+                                        ]
+                                        [ Icon.viewIcon Icon.whatsapp
+                                        , span [ class "ml-2" ] [ text "WhatsApp" ]
+                                        ]
+                                    ]
+                                ]
+                            ]
+                        ]
                     ]
                 ]
             ]
-        ]
+        )
 
 
-editReportPageView : Report.Report -> Html Msg
-editReportPageView report =
-    div [ class "fixed inset-0 bg-black bg-opacity-25 z-40 p-4" ]
-        [ div [ class "bg-white rounded-md w-full h-full overflow-hidden flex flex-col" ]
-            [ div [ class "relative h-16 bg-yellow-300 uppercase font-bold text-xl tracking-wider flex items-center justify-center" ]
-                [ text "Nuevo reporte"
-                , div
-                    [ class "absolute right-0 h-full w-16 bg-red-400 flex items-center justify-center text-3xl cursor-pointer"
-                    , onClick (SetModal NoModal)
-                    ]
-                    [ Icon.viewIcon Icon.times
-                    ]
-                ]
-            , div [ class "text-black p-4" ]
-                [ div [] [ text "Jugador" ]
-                , div [] [ text "Humano" ]
-                , div [] [ text "Animal" ]
-                , div [] [ text "Reporte" ]
-                ]
+reportEditModalView : Report.Report -> Html Msg
+reportEditModalView report =
+    Modal.view "Nuevo Reporte"
+        (SetModal NoModal)
+        (div [ class "text-black p-4" ]
+            [ div [] [ text "Jugador" ]
+            , div [] [ text "Humano" ]
+            , div [] [ text "Animal" ]
+            , div [] [ text "Reporte" ]
             ]
-        ]
+        )
 
 
-buttonBackView : String -> Msg -> Html Msg
-buttonBackView pageTitle msg =
-    div [ class "h-12 bg-green-400 flex items-center" ]
-        [ button [ class "text-2xl w-12 text-center", onClick msg ] [ text "❮" ]
-        , div [ class "flex-grow font-semibold text-xl tracking-wider text-white" ] [ text pageTitle ]
-        ]
 
-
-type alias ImageMarker =
-    { src : String
-    , lat : Float
-    , lng : Float
-    , id : String
-    }
-
-
-imageMarkersEncode : List ImageMarker -> JE.Value
-imageMarkersEncode imageMarkers =
-    imageMarkers
-        |> JE.list
-            (\imageMarker ->
-                JE.object
-                    [ ( "src", JE.string imageMarker.src )
-                    , ( "lat", JE.float imageMarker.lat )
-                    , ( "lng", JE.float imageMarker.lng )
-                    , ( "id", JE.string imageMarker.id )
-                    ]
-            )
-
-
-reportToMarker : Report.Report -> ImageMarker
-reportToMarker report =
-    { src = Maybe.withDefault "" (List.head report.animal.photos)
-    , lat = Tuple.first report.spaceTime.location
-    , lng = Tuple.second report.spaceTime.location
-    , id = report.id
-    }
-
-
-onMarkerClick : (String -> msg) -> Html.Attribute msg
-onMarkerClick message =
-    on "markerClick" (JD.map message (JD.at [ "detail", "id" ] JD.string))
-
-
-mapView : List Report.Report -> Html Msg
-mapView reports =
-    let
-        markers : List ImageMarker
-        markers =
-            reports
-                |> List.map reportToMarker
-    in
-    div [ style "height" "400px", class "w-full" ]
-        [ node "mapbox-element"
-            [ attribute "images" (JE.encode 0 (imageMarkersEncode markers))
-            , attribute "lat" "-38.0139405"
-            , attribute "lng" "-57.5610563"
-            , attribute "zoom" "10"
-            , onMarkerClick (SetModal << ViewReport)
-            ]
-            []
-        ]
+-- div [ class "fixed inset-0 bg-black bg-opacity-25 z-40 p-4" ]
+--     [ div [ class "bg-white rounded-md w-full h-full overflow-hidden flex flex-col" ]
+--         [ div [ class "relative h-16 bg-yellow-300 uppercase font-bold text-xl tracking-wider flex items-center justify-center" ]
+--             [ text "Nuevo reporte"
+--             , div
+--                 [ class "absolute right-0 h-full w-16 bg-red-400 flex items-center justify-center text-3xl cursor-pointer"
+--                 , onClick (SetModal NoModal)
+--                 ]
+--                 [ Icon.viewIcon Icon.times
+--                 ]
+--             ]
+--         ,
+--         ]
+--     ]
 
 
 filterView : Html Msg
