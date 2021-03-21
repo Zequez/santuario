@@ -35,8 +35,6 @@ import FontAwesome.Styles
 import Html exposing (Html, a, br, button, div, h2, hr, img, input, option, p, select, span, text)
 import Html.Attributes exposing (class, classList, href, placeholder, src, style, target, title, value)
 import Html.Events exposing (onClick, onInput)
-import Json.Decode as JD
-import Json.Encode as JE
 import Regex
 import Round
 import Task
