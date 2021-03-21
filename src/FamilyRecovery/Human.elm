@@ -54,6 +54,23 @@ cardView human =
         )
 
 
+tagsView : String -> List Human -> Html msg
+tagsView label humans =
+    Card.tagView label
+        (div [ class "flex flex-wrap" ]
+            (humans
+                |> List.map
+                    (\h ->
+                        span [ class "whitespace-nowrap" ]
+                            [ img [ src h.avatar, class "inline-block h-4 w-4 mr-1 rounded-full" ] []
+                            , text h.name
+                            ]
+                    )
+                |> List.intersperse (text ",")
+            )
+        )
+
+
 
 -- , div [ class "flex justify-end h-12 bg-gray-200" ]
 --     [ a
@@ -71,6 +88,18 @@ cardView human =
 whatsappUrl : String -> String
 whatsappUrl rawPhone =
     "https://api.whatsapp.com/send?phone=" ++ Utils.cleanPhoneNumber rawPhone
+
+
+empty : Human
+empty =
+    { id = ""
+    , alias = ""
+    , name = ""
+    , email = ""
+    , phone = ""
+    , avatar = ""
+    , bio = ""
+    }
 
 
 data1 : Human

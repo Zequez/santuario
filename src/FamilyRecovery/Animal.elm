@@ -1,8 +1,11 @@
 module FamilyRecovery.Animal exposing (..)
 
+import FamilyRecovery.Card as Card
 import FamilyRecovery.Human as Human
 import FamilyRecovery.Sex as Sex
 import FamilyRecovery.Specie as Specie
+import Html exposing (Html, a, div, img, input, span, text)
+import Html.Attributes exposing (class, href, placeholder, src, target, value)
 
 
 type alias Animal =
@@ -13,6 +16,49 @@ type alias Animal =
     , sex : Sex.Sex
     , bio : String
     , photos : List String
+    }
+
+
+cardView : Animal -> Html msg
+cardView animal =
+    Card.view "Animal"
+        (div [ class "flex items-start" ]
+            [ div [ class "w-32 overflow-hidden rounded-md" ]
+                [ animal.photos
+                    |> List.head
+                    |> Maybe.andThen (\photoSrc -> Just (img [ src photoSrc, class "object-cover w-full" ] []))
+                    |> Maybe.withDefault (text "No photo")
+                ]
+            , div [ class "ml-4 flex-grow" ]
+                [ div [ class "text-xl mb-1" ]
+                    [ input [ placeholder "Nombre", value animal.name, class "w-full" ] []
+                    ]
+                , Card.row <|
+                    Card.tagsWrapper
+                        [ Card.tagView "Especie" (text (Specie.label animal.specie ++ " " ++ Specie.emoji animal.specie))
+                        , Card.tagView "Sexo"
+                            (div [ class "flex items-center" ]
+                                [ text (Sex.label animal.sex)
+                                , span [ class "ml-1" ] [ Sex.fullIcon animal.sex ]
+                                ]
+                            )
+                        , Human.tagsView "Familia humana" animal.family
+                        ]
+                , div [] [ Card.textBoxView "Bio" animal.bio ]
+                ]
+            ]
+        )
+
+
+empty : Animal
+empty =
+    { id = ""
+    , family = []
+    , name = ""
+    , specie = Specie.Other
+    , sex = Sex.Male
+    , bio = ""
+    , photos = []
     }
 
 

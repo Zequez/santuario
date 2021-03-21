@@ -16,6 +16,7 @@ module FamilyRecovery.Main exposing (main)
 import Browser
 import Components.BackHeader as BackHeader
 import Date exposing (Date)
+import Dict exposing (Dict)
 import FamilyRecovery.Animal as Animal
 import FamilyRecovery.Card as Card
 import FamilyRecovery.Human as Human
@@ -23,6 +24,7 @@ import FamilyRecovery.Mapbox as Mapbox
 import FamilyRecovery.Modal as Modal
 import FamilyRecovery.Player as Player
 import FamilyRecovery.Report as Report
+import FamilyRecovery.ReportEditModal as ReportEditModal
 import FamilyRecovery.Sex as Sex
 import FamilyRecovery.Specie as Specie
 import FamilyRecovery.Utils as Utils
@@ -51,15 +53,32 @@ import Time
 
 
 type alias Model =
-    { player : Player.Player
-    , geolocation : Report.GeoLocation
-    , searchKm : Float
+    { -- Data
+      players : Dict String Player.Player
+    , animals : Dict String Animal.Animal
+    , humans : Dict String Human.Human
+    , reports : Dict String Report.Report
+
+    -- Staging
+    , player : Maybe Player.Player
+    , human : Maybe Human.Human
+    , animal : Maybe Animal.Animal
+    , report : Maybe Report.Report
+
+    -- Visitor
     , today : Date
+    , geolocation : Report.GeoLocation
+
+    -- UI
+    , tab : Tab
+    , modal : Modal
+    , reportEditModal : Maybe ReportEditModal.Model
+
+    -- Searching
+    , searchKm : Float
     , query : String
     , querySex : Maybe Sex.Sex
     , querySpecie : Maybe Specie.Specie
-    , tab : Tab
-    , modal : Modal
     }
 
 
@@ -72,7 +91,7 @@ type Tab
 type Modal
     = NoModal
     | ViewReport String
-    | EditReport Report.Report
+    | EditReport String
 
 
 
@@ -81,12 +100,6 @@ type Modal
 --     , name : String
 --     , location : List ( Float, Float )
 --     }
--------- ████████╗███████╗███████╗████████╗    ██████╗  █████╗ ████████╗ █████╗
--------- ╚══██╔══╝██╔════╝██╔════╝╚══██╔══╝    ██╔══██╗██╔══██╗╚══██╔══╝██╔══██╗
---------    ██║   █████╗  ███████╗   ██║       ██║  ██║███████║   ██║   ███████║
---------    ██║   ██╔══╝  ╚════██║   ██║       ██║  ██║██╔══██║   ██║   ██╔══██║
---------    ██║   ███████╗███████║   ██║       ██████╔╝██║  ██║   ██║   ██║  ██║
---------    ╚═╝   ╚══════╝╚══════╝   ╚═╝       ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝  ╚═╝
 ------------------------------------------------------ ██╗███╗   ██╗██╗████████╗
 ------------------------------------------------------ ██║████╗  ██║██║╚══██╔══╝
 ------------------------------------------------------ ██║██╔██╗ ██║██║   ██║
@@ -97,15 +110,32 @@ type Modal
 
 init : ( Model, Cmd Msg )
 init =
-    ( { player = Player.data1
-      , geolocation = Nothing
-      , searchKm = 5.0
+    -- Data
+    ( { players = Player.toDict Player.all
+      , animals = Player.animals Player.all
+      , humans = Player.humans Player.all
+      , reports = Player.reports Player.all
+
+      -- Staging unsaved data
+      , player = Just Player.data1
+      , human = Nothing
+      , animal = Nothing
+      , report = Nothing
+
+      -- Visitor
       , today = Date.fromCalendarDate 2020 Time.Jan 1
+      , geolocation = Nothing
+
+      -- UI
+      , tab = MissingTab
+      , modal = NoModal
+      , reportEditModal = Nothing
+
+      -- Searching
+      , searchKm = 5.0
       , query = ""
       , querySex = Nothing
       , querySpecie = Nothing
-      , tab = MissingTab
-      , modal = NoModal
       }
     , Date.today |> Task.perform ReceiveDate
     )
@@ -137,7 +167,11 @@ type Msg
     | PickSex String
     | SetTab Tab
     | SetModal Modal
-    | EditReportSetLocation ( Float, Float )
+    | UpdateReportEditModal ReportEditModal.Msg
+
+
+
+-- | SetReport Report.WriteMsg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -187,29 +221,56 @@ update msg model =
             ( { model | tab = tab }, Cmd.none )
 
         SetModal modal ->
-            ( { model | modal = modal }, Cmd.none )
+            case modal of
+                EditReport reportId ->
+                    case model.reportEditModal of
+                        Just reportEditModal ->
+                            -- TODO: If the reportID is different from reportEditModal ID then
+                            -- we should replace it, if not, just open the modal
+                            ( { model | modal = modal }, Cmd.none )
 
-        EditReportSetLocation location ->
-            case model.modal of
-                EditReport report ->
+                        Nothing ->
+                            ( { model
+                                | modal = modal
+                                , reportEditModal = Just ReportEditModal.new
+                              }
+                            , Cmd.none
+                            )
+
+                _ ->
+                    ( { model | modal = modal }, Cmd.none )
+
+        -- ViewReport reportId ->
+        -- NoModal -> ( { model | modal = NoModal }, Cmd.none )
+        UpdateReportEditModal subMsg ->
+            case model.reportEditModal of
+                Just reportEditModal ->
                     ( { model
-                        | modal =
-                            EditReport
-                                { report
-                                    | spaceTime =
-                                        { date = report.spaceTime.date
-                                        , location = location
-                                        }
-                                }
+                        | reportEditModal =
+                            Just (ReportEditModal.update subMsg reportEditModal)
                       }
                     , Cmd.none
                     )
 
-                _ ->
+                Nothing ->
                     ( model, Cmd.none )
 
 
 
+-- SetReport writeMsg ->
+--     model
+--         |> updateEditingReport (Report.writer writeMsg)
+--         |> toCmdNone
+-- toCmdNone : Model -> ( Model, Cmd Msg )
+-- toCmdNone model =
+--     ( model, Cmd.none )
+-- updateEditingReport : (Report.Report -> Report.Report) -> Model -> Model
+-- updateEditingReport updater model =
+--     case model.modal of
+--         EditReport report ->
+--             { model | modal = EditReport (updater report) }
+--         _ ->
+--             model
 ---------------------------------------- ██╗   ██╗██╗███████╗██╗    ██╗███████╗
 ---------------------------------------- ██║   ██║██║██╔════╝██║    ██║██╔════╝
 ---------------------------------------- ██║   ██║██║█████╗  ██║ █╗ ██║███████╗
@@ -237,7 +298,8 @@ view : Model -> Html Msg
 view model =
     let
         filteredReports =
-            model.player.reports
+            model.reports
+                |> Dict.values
                 |> List.filter
                     (\r ->
                         (case model.tab of
@@ -266,8 +328,8 @@ view model =
         [ FontAwesome.Styles.css
         , BackHeader.view docTitle
         , tabsView model.tab
-        , Mapbox.imagesMapView filteredReports (SetModal << ViewReport)
-        , actionButtonView (SetModal (EditReport Report.data1))
+        , Mapbox.imagesMapView (List.map Report.toMapboxMarker filteredReports) (SetModal << ViewReport)
+        , actionButtonView (SetModal (EditReport ""))
 
         -- Modals
         , case model.modal of
@@ -279,8 +341,13 @@ view model =
                     Nothing ->
                         div [] []
 
-            EditReport report ->
-                reportEditModalView model.player report
+            EditReport reportId ->
+                case model.reportEditModal of
+                    Just reportEditModal ->
+                        ReportEditModal.view model.player reportEditModal (SetModal NoModal) UpdateReportEditModal
+
+                    Nothing ->
+                        div [] []
 
             NoModal ->
                 div [] []
@@ -348,12 +415,12 @@ reportsResolutionPairView { missing, maybeFound, date } =
         , div [ class "text-black text-opacity-50 mb-4" ]
             [ text
                 ("Después de "
-                    ++ String.fromInt (Utils.daysBetweenDates missing.report.spaceTime.date date)
+                    ++ String.fromInt (Utils.daysBetweenDates missing.report.date date)
                     ++ " días"
                     ++ (case maybeFound of
                             Just found ->
                                 " a "
-                                    ++ Round.round 1 (Utils.distanceBetweenPoints found.report.spaceTime.location missing.report.spaceTime.location)
+                                    ++ Round.round 1 (Utils.distanceBetweenPoints found.report.location missing.report.location)
                                     ++ "km de distancia"
 
                             Nothing ->
@@ -479,7 +546,7 @@ reportShowModalView cReport =
                             ]
                         , span
                             [ class "text-white text-opacity-75" ]
-                            [ text (Date.format "EEEE, d MMMM y" report.spaceTime.date) ]
+                            [ text (Date.format "EEEE, d MMMM y" report.date) ]
                         ]
                     ]
                 , div [ class "p-4 text-gray-700" ]
@@ -489,139 +556,6 @@ reportShowModalView cReport =
                     ]
                 ]
             ]
-        )
-
-
-reportEditModalView : Player.Player -> Report.Report -> Html Msg
-reportEditModalView player report =
-    Modal.view "Nuevo Reporte"
-        (SetModal NoModal)
-        (div [ class "text-black p-4" ]
-            [ div [ class "mb-4" ] [ Card.view "Jugador" (text player.alias) ]
-            , div [ class "mb-4 text-xl" ] [ text "Contacto primario humano" ]
-            , div [ class "mb-4" ] [ Human.cardView report.humanContact ]
-            , div [ class "mb-4 text-xl" ] [ text "Información del animal perdide" ]
-            , div [ class "mb-4" ] [ animalCardView report.animal ]
-            , div [ class "mb-4 text-xl" ] [ text "Información del evento" ]
-            , div [ class "mb-4" ] [ shallowReportCardView report ]
-            , div [ class "flex justify-end" ]
-                [ button [ class "bg-yellow-300 py-2 px-4 rounded-md text-white font-bold tracking-wider uppercase" ]
-                    [ text "Publicar reporte"
-                    ]
-                ]
-            ]
-        )
-
-
-shallowReportCardView : Report.Report -> Html Msg
-shallowReportCardView report =
-    Card.view "Reporte"
-        (div []
-            [ cardRow <|
-                cardTagsWrapper
-                    [ cardTagView "Tipo" (text (Report.reportTypeToLabel report.reportType))
-                    , cardTagView "Fecha" (text "8 Feb 2021")
-                    ]
-            , cardRow <| div [] [ cardMapView "Lugar" report.spaceTime.location ]
-            , div [] [ cardTextBox "Notas" report.notes ]
-            ]
-        )
-
-
-animalCardView : Animal.Animal -> Html msg
-animalCardView animal =
-    Card.view "Animal"
-        (div [ class "flex items-start" ]
-            [ div [ class "w-32 overflow-hidden rounded-md" ]
-                [ animal.photos
-                    |> List.head
-                    |> Maybe.andThen (\photoSrc -> Just (img [ src photoSrc, class "object-cover w-full" ] []))
-                    |> Maybe.withDefault (text "No photo")
-                ]
-            , div [ class "ml-4 flex-grow" ]
-                [ div [ class "text-xl mb-1" ]
-                    [ input [ placeholder "Nombre", value animal.name, class "w-full" ] []
-                    ]
-                , cardRow <|
-                    cardTagsWrapper
-                        [ cardTagView "Especie" (text (Specie.label animal.specie ++ " " ++ Specie.emoji animal.specie))
-                        , cardTagView "Sexo"
-                            (div [ class "flex items-center" ]
-                                [ text (Sex.label animal.sex)
-                                , span [ class "ml-1" ] [ Sex.fullIcon animal.sex ]
-                                ]
-                            )
-                        , cardHumansTagsView "Familia humana" animal.family
-                        ]
-                , div [] [ cardTextBox "Bio" animal.bio ]
-                ]
-            ]
-        )
-
-
-cardRow : Html msg -> Html msg
-cardRow el =
-    div [ class "mb-4" ] [ el ]
-
-
-cardTagsWrapper : List (Html msg) -> Html msg
-cardTagsWrapper children =
-    div [ class "flex flex-wrap -m-1" ]
-        (children
-            |> List.map (\tag -> div [ class "m-1" ] [ tag ])
-        )
-
-
-cardTagView : String -> Html msg -> Html msg
-cardTagView label el =
-    div [ class "rounded-md bg-gray-200  text-sm overflow-hidden flex flex-inline" ]
-        [ div [ class "bg-yellow-400 uppercase text-xs flex items-center justify-center text-center text-white font-bold px-2" ]
-            [ text label ]
-        , div
-            [ class "px-2 flex items-center" ]
-            [ el ]
-        ]
-
-
-cardMapView : String -> ( Float, Float ) -> Html Msg
-cardMapView label location =
-    div [ class "relative" ]
-        [ cardLegendView label
-        , div [ class "h-60 bg-gray-100 rounded-md border border-gray-200" ]
-            [ Mapbox.locationPickerMapView location EditReportSetLocation
-            ]
-        ]
-
-
-cardTextBox : String -> String -> Html msg
-cardTextBox label val =
-    div [ class "relative bg-gray-100 p-2 rounded-md border border-gray-200" ]
-        [ cardLegendView label
-        , text val
-        ]
-
-
-cardLegendView : String -> Html msg
-cardLegendView legendText =
-    div [ class "absolute bg-yellow-400 z-40 top-0 left-0 -mt-2 ml-2 text-xs uppercase text-white font-bold px-1 rounded-sm" ]
-        [ text legendText
-        ]
-
-
-cardHumansTagsView : String -> List Human.Human -> Html msg
-cardHumansTagsView label humans =
-    cardTagView label
-        (div [ class "flex flex-wrap" ]
-            (humans
-                |> List.map
-                    (\h ->
-                        span [ class "whitespace-nowrap" ]
-                            [ img [ src h.avatar, class "inline-block h-4 w-4 mr-1 rounded-full" ] []
-                            , text h.name
-                            ]
-                    )
-                |> List.intersperse (text ",")
-            )
         )
 
 

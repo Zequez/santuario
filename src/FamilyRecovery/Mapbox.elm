@@ -1,6 +1,5 @@
 module FamilyRecovery.Mapbox exposing (..)
 
-import FamilyRecovery.Report as Report
 import Html exposing (Html, div, node)
 import Html.Attributes exposing (attribute, class, style)
 import Html.Events exposing (on)
@@ -31,15 +30,6 @@ imageMarkersEncode imageMarkers =
             )
 
 
-reportToMarker : Report.Report -> ImageMarker
-reportToMarker report =
-    { src = Maybe.withDefault "" (List.head report.animal.photos)
-    , lat = Tuple.first report.spaceTime.location
-    , lng = Tuple.second report.spaceTime.location
-    , id = report.id
-    }
-
-
 onMarkerClick : (String -> msg) -> Html.Attribute msg
 onMarkerClick message =
     on "markerClick" (JD.map message (JD.at [ "detail", "id" ] JD.string))
@@ -57,14 +47,8 @@ onLocationChangeClick message =
         )
 
 
-imagesMapView : List Report.Report -> (String -> msg) -> Html msg
-imagesMapView reports msg =
-    let
-        markers : List ImageMarker
-        markers =
-            reports
-                |> List.map reportToMarker
-    in
+imagesMapView : List ImageMarker -> (String -> msg) -> Html msg
+imagesMapView markers msg =
     div [ style "height" "400px", class "w-full" ]
         [ node "mapbox-element"
             [ attribute "images" (JE.encode 0 (imageMarkersEncode markers))
