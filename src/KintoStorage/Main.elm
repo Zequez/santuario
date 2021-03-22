@@ -212,30 +212,30 @@ update msg model =
             )
 
         NeedAdded (Err err) ->
-            let
-                _ =
-                    Debug.log "Error while creating `need` record" err
-            in
+            -- let
+            --     _ =
+            --         Debug.log "Error while creating `need` record" err
+            -- in
             ( model, Cmd.none )
 
         NeedsFetched (Ok needPager) ->
             ( { model | needs = needPager.objects, connectionStatus = Loaded }, Cmd.none )
 
         NeedsFetched (Err err) ->
-            let
-                _ =
-                    Debug.log "Error while getting list of `need` records" err
-            in
+            -- let
+            --     _ =
+            --         Debug.log "Error while getting list of `need` records" err
+            -- in
             ( { model | connectionStatus = Error }, Cmd.none )
 
         NeedDeleted (Ok need) ->
             ( model, Cmd.none )
 
         NeedDeleted (Err err) ->
-            let
-                _ =
-                    Debug.log "Failed to delete need" err
-            in
+            -- let
+            --     _ =
+            --         Debug.log "Failed to delete need" err
+            -- in
             ( model, Cmd.none )
 
         NewNeedChange description ->
