@@ -9,6 +9,7 @@ import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
 import Kinto
+import List.Extra
 
 
 
@@ -178,7 +179,21 @@ update msg model =
             ( { model | newNeedDescription = "" }, addNeed model.newNeedDescription )
 
         NeedDelete id ->
-            ( model, deleteNeed id )
+            ( { model
+                | needs =
+                    model.needs
+                        |> List.filter
+                            (\n ->
+                                case n.id of
+                                    Just needId ->
+                                        needId /= id
+
+                                    Nothing ->
+                                        True
+                            )
+              }
+            , deleteNeed id
+            )
 
 
 
@@ -194,10 +209,16 @@ view : Model -> Html Msg
 view model =
     div [ class "p-8 bg-gray-100 min-h-full" ]
         [ div [ class "text-2xl mb-4 tracking-wide" ] [ text "List of needs" ]
-        , div []
-            (model.needs
-                |> List.map needView
-            )
+        , if List.isEmpty model.needs then
+            div [ class "text-xl text-gray-400" ]
+                [ text "You have no needs, that's alright too."
+                ]
+
+          else
+            div []
+                (model.needs
+                    |> List.map needView
+                )
         , newNeedView model.newNeedDescription
         ]
 
