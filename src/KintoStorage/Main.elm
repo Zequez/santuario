@@ -98,10 +98,17 @@ emptyNeed =
 
 type alias Model =
     { needs : List Need
+    , connectionStatus : ConnectionStatus
     , newNeedDescription : String
     , timeZone : Time.Zone
     , timePosix : Posix
     }
+
+
+type ConnectionStatus
+    = Loading
+    | Error
+    | Loaded
 
 
 type alias Flags =
@@ -111,6 +118,7 @@ type alias Flags =
 init : Flags -> ( Model, Cmd Msg )
 init flags =
     ( { needs = []
+      , connectionStatus = Loading
       , newNeedDescription = ""
       , timePosix = Time.millisToPosix 0
       , timeZone = Time.utc
@@ -211,14 +219,14 @@ update msg model =
             ( model, Cmd.none )
 
         NeedsFetched (Ok needPager) ->
-            ( { model | needs = needPager.objects }, Cmd.none )
+            ( { model | needs = needPager.objects, connectionStatus = Loaded }, Cmd.none )
 
         NeedsFetched (Err err) ->
             let
                 _ =
                     Debug.log "Error while getting list of `need` records" err
             in
-            ( model, Cmd.none )
+            ( { model | connectionStatus = Error }, Cmd.none )
 
         NeedDeleted (Ok need) ->
             ( model, Cmd.none )
@@ -289,18 +297,28 @@ view model =
     div [ class "p-8 bg-gray-100 min-h-full" ]
         [ FontAwesome.Styles.css
         , div [ class "text-2xl mb-4 tracking-wide" ] [ text "List of needs" ]
-        , if List.isEmpty model.needs then
-            div [ class "text-xl text-gray-400" ]
-                [ text "You have no needs, that's alright too."
-                ]
+        , case model.connectionStatus of
+            Loading ->
+                div [ class "text-xl text-gray-400" ] [ text "List of needs is loading..." ]
 
-          else
-            div []
-                (model.needs
-                    |> List.reverse
-                    |> List.map needView
-                )
-        , newNeedView model.newNeedDescription
+            Error ->
+                div [ class "text-xl text-gray-400" ] [ text "Oops, looks like stuff could not be loaded." ]
+
+            Loaded ->
+                div []
+                    [ if List.isEmpty model.needs then
+                        div [ class "text-xl text-gray-400" ]
+                            [ text "Seems like all your needs are met."
+                            ]
+
+                      else
+                        div []
+                            (model.needs
+                                |> List.reverse
+                                |> List.map needView
+                            )
+                    , newNeedView model.newNeedDescription
+                    ]
         ]
 
 
