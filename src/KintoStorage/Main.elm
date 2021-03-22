@@ -3,13 +3,15 @@ module KintoStorage.Main exposing (..)
 import Browser
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
+import FontAwesome.Styles
 import Html exposing (Html, a, br, button, div, h2, hr, img, input, option, p, select, span, text)
 import Html.Attributes exposing (class, classList, href, placeholder, src, style, target, title, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
 import Kinto
-import List.Extra
+import Task
+import Time exposing (Posix)
 
 
 
@@ -24,6 +26,7 @@ import List.Extra
 type alias Need =
     { id : Maybe String
     , description : String
+    , createdAt : Posix
     , isMet : Bool
     , metBy : String
     }
@@ -35,17 +38,32 @@ dbCollectionNeed =
 
 decodeNeed : JD.Decoder Need
 decodeNeed =
-    JD.map4 Need
+    JD.map5 Need
         (JD.at [ "id" ] (JD.maybe JD.string))
         (JD.at [ "description" ] JD.string)
+        (JD.map
+            (Maybe.withDefault (Time.millisToPosix 0))
+            (JD.maybe (JD.field "createdAt" decodePosix))
+        )
         (JD.at [ "isMet" ] JD.bool)
         (JD.at [ "metBy" ] JD.string)
+
+
+decodeId : JD.Decoder String
+decodeId =
+    JD.field "id" JD.string
+
+
+decodePosix : JD.Decoder Posix
+decodePosix =
+    JD.map Time.millisToPosix JD.int
 
 
 encodeNeed : Need -> JE.Value
 encodeNeed need =
     JE.object
         [ ( "description", JE.string need.description )
+        , ( "createdAt", JE.int (Time.posixToMillis need.createdAt) )
         , ( "isMet", JE.bool need.isMet )
         , ( "metBy", JE.string need.metBy )
         ]
@@ -54,6 +72,21 @@ encodeNeed need =
 resourceNeed : Kinto.Resource Need
 resourceNeed =
     Kinto.recordResource dbBucket dbCollectionNeed decodeNeed
+
+
+resourceDeletedNeedId : Kinto.Resource String
+resourceDeletedNeedId =
+    Kinto.recordResource dbBucket dbCollectionNeed decodeId
+
+
+emptyNeed : Need
+emptyNeed =
+    { id = Nothing
+    , description = ""
+    , createdAt = Time.millisToPosix 0
+    , isMet = False
+    , metBy = ""
+    }
 
 
 
@@ -66,6 +99,8 @@ resourceNeed =
 type alias Model =
     { needs : List Need
     , newNeedDescription : String
+    , timeZone : Time.Zone
+    , timePosix : Posix
     }
 
 
@@ -75,11 +110,21 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( { needs = [], newNeedDescription = "" }
+    ( { needs = []
+      , newNeedDescription = ""
+      , timePosix = Time.millisToPosix 0
+      , timeZone = Time.utc
+      }
     , Cmd.batch
         [ getNeedsList
+        , getTime
         ]
     )
+
+
+getTime : Cmd Msg
+getTime =
+    Task.perform identity (Task.map2 SetTime Time.here Time.now)
 
 
 
@@ -94,31 +139,31 @@ init flags =
 type Msg
     = NeedAdded (Result Kinto.Error Need)
     | NeedsFetched (Result Kinto.Error (Kinto.Pager Need))
-    | NeedDeleted (Result Kinto.Error Need)
+    | NeedDeleted (Result Kinto.Error String)
     | NewNeedChange String
     | NewNeedSubmit
+    | NewNeedSubmitTimed Posix
     | NeedDelete String
+    | SetTime Time.Zone Posix
 
 
-addNeed : String -> Cmd Msg
-addNeed description =
+addNeed : Need -> Cmd Msg
+addNeed need =
     client
         |> Kinto.create resourceNeed
-            (encodeNeed
-                { id = Nothing
-                , description = description
-                , isMet = False
-                , metBy = ""
-                }
-            )
+            (encodeNeed need)
             NeedAdded
         |> Kinto.send
+
+
+
+-- Task.attempt (Task.andThen (addNeed newNeed >> Task.succeed) Time.now)
 
 
 deleteNeed : String -> Cmd Msg
 deleteNeed id =
     client
-        |> Kinto.delete resourceNeed id NeedDeleted
+        |> Kinto.delete resourceDeletedNeedId id NeedDeleted
         |> Kinto.send
 
 
@@ -126,7 +171,7 @@ getNeedsList : Cmd Msg
 getNeedsList =
     client
         |> Kinto.getList resourceNeed NeedsFetched
-        |> Kinto.sort [ "description" ]
+        |> Kinto.sort [ "-createdAt" ]
         |> Kinto.send
 
 
@@ -143,7 +188,20 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         NeedAdded (Ok need) ->
-            ( { model | needs = need :: model.needs }, Cmd.none )
+            ( { model
+                | needs =
+                    model.needs
+                        |> List.map
+                            (\n ->
+                                if n.id == Nothing && n.description == need.description then
+                                    { n | id = need.id }
+
+                                else
+                                    n
+                            )
+              }
+            , Cmd.none
+            )
 
         NeedAdded (Err err) ->
             let
@@ -176,23 +234,44 @@ update msg model =
             ( { model | newNeedDescription = description }, Cmd.none )
 
         NewNeedSubmit ->
-            ( { model | newNeedDescription = "" }, addNeed model.newNeedDescription )
+            ( model, Task.perform NewNeedSubmitTimed Time.now )
+
+        NewNeedSubmitTimed posix ->
+            let
+                newNeed =
+                    { emptyNeed | description = model.newNeedDescription, createdAt = posix }
+            in
+            ( { model
+                | newNeedDescription = ""
+                , needs = newNeed :: model.needs
+              }
+            , addNeed newNeed
+            )
 
         NeedDelete id ->
             ( { model
                 | needs =
                     model.needs
-                        |> List.filter
-                            (\n ->
-                                case n.id of
-                                    Just needId ->
-                                        needId /= id
-
-                                    Nothing ->
-                                        True
-                            )
+                        |> removeNeedById id
               }
             , deleteNeed id
+            )
+
+        SetTime zone posix ->
+            ( { model | timeZone = zone, timePosix = posix }, Cmd.none )
+
+
+removeNeedById : String -> List Need -> List Need
+removeNeedById id needs =
+    needs
+        |> List.filter
+            (\n ->
+                case n.id of
+                    Just needId ->
+                        needId /= id
+
+                    Nothing ->
+                        True
             )
 
 
@@ -208,7 +287,8 @@ update msg model =
 view : Model -> Html Msg
 view model =
     div [ class "p-8 bg-gray-100 min-h-full" ]
-        [ div [ class "text-2xl mb-4 tracking-wide" ] [ text "List of needs" ]
+        [ FontAwesome.Styles.css
+        , div [ class "text-2xl mb-4 tracking-wide" ] [ text "List of needs" ]
         , if List.isEmpty model.needs then
             div [ class "text-xl text-gray-400" ]
                 [ text "You have no needs, that's alright too."
@@ -217,6 +297,7 @@ view model =
           else
             div []
                 (model.needs
+                    |> List.reverse
                     |> List.map needView
                 )
         , newNeedView model.newNeedDescription
@@ -238,7 +319,11 @@ needView need =
                     ]
 
             Nothing ->
-                div [] []
+                div
+                    [ class "w-8 p-2 ml-2 my-2 text-gray-300 flex items-center justify-center animation-rotate"
+                    ]
+                    [ Icon.viewIcon Icon.sync
+                    ]
         ]
 
 
