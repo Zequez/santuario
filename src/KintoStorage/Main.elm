@@ -1,6 +1,7 @@
 module KintoStorage.Main exposing (..)
 
 import Browser
+import EnvConstants
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles
@@ -398,11 +399,7 @@ dbBucket =
 
 client : Kinto.Client
 client =
-    Kinto.client
-        -- "https://kinto.dev.mozaws.net/v1/"
-        -- (Kinto.Basic "test" "test")
-        "http://localhost:8888/v1"
-        (Kinto.Basic "admin" "adminPassword123")
+    Kinto.client EnvConstants.kintoHost (Kinto.Basic "admin" "adminPassword123")
 
 
 onEnter : Msg -> Html.Attribute Msg

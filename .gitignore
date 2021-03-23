@@ -4,3 +4,4 @@ elm-stuff
 .idea
 public/**/*.html
 .env
+src/EnvConstants.elm

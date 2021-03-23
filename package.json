@@ -7,8 +7,8 @@
   "license": "MIT",
   "browserslist": "> 0.25%, not dead",
   "scripts": {
-    "start": "snowpack dev",
-    "build": "NODE_ENV=production && snowpack build",
+    "start": "elm-constants && snowpack dev",
+    "build": "NODE_ENV=production && elm-constants && snowpack build",
     "test": "echo \"Error: no test specified\" && exit 1",
     "deploy": "ipfs-deploy build -p pinata -d cloudflare"
   },
@@ -17,6 +17,7 @@
     "@snowpack/plugin-postcss": "^1.1.0",
     "@types/mapbox-gl": "^2.1.0",
     "autoprefixer": "^10.2.4",
+    "elm-constants": "^1.0.0",
     "elm-debug-transformer": "^1.1.2",
     "snowpack": "^3.1.0-pre.11",
     "snowpack-plugin-elm": "^0.4.2",
