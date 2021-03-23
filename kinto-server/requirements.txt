@@ -1,5 +1,1 @@
 kinto[postgresql]
-SQLAlchemy
-psycopg2
-zope.sqlalchemy
-python-dotenv
