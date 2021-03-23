@@ -5,8 +5,8 @@ import EnvConstants
 import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles
-import Html exposing (Html, a, br, button, div, h2, hr, img, input, option, p, select, span, text)
-import Html.Attributes exposing (class, classList, href, placeholder, src, style, target, title, type_, value)
+import Html exposing (Html, a, br, button, code, div, h2, hr, img, input, option, p, select, span, text)
+import Html.Attributes exposing (class, classList, disabled, href, placeholder, src, style, target, title, type_, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
@@ -115,8 +115,8 @@ type alias SignInModel =
 
 type SignInStatus
     = NotSubmitted
-    | PasswordIncorrect
-    | SubmittedError
+    | Submitting
+    | SubmittedError String String
 
 
 type alias NeedsModel =
@@ -157,6 +157,28 @@ init flags =
     )
 
 
+signInInit : ( Model, Cmd Msg )
+signInInit =
+    ( SignInPage (SignInModel "" "" "" NotSubmitted False), Cmd.none )
+
+
+needsInit : Kinto.Auth -> ( Model, Cmd Msg )
+needsInit auth =
+    ( NeedsPage
+        { needs = []
+        , connectionStatus = Loading
+        , newNeedDescription = ""
+        , timePosix = Time.millisToPosix 0
+        , timeZone = Time.utc
+        , auth = auth
+        }
+    , Cmd.batch
+        [ Cmd.map NeedsMsg (getNeedsList (client auth))
+        , Cmd.map NeedsMsg getTime
+        ]
+    )
+
+
 getTime : Cmd NeedsMsg
 getTime =
     Task.perform identity (Task.map2 SetTime Time.here Time.now)
@@ -182,7 +204,7 @@ type SignInMsg
     | WritePasswordConfirmation String
     | ToggleSignUp
     | Submit
-    | SubmitResponse (Result Kinto.Error String)
+    | SubmitResponse (Result Kinto.Error (Maybe String))
 
 
 type NeedsMsg
@@ -196,9 +218,14 @@ type NeedsMsg
     | SetTime Time.Zone Posix
 
 
-addNeed : Need -> Cmd NeedsMsg
-addNeed need =
-    client
+type ContextMsg
+    = GotoPage ( Model, Cmd Msg )
+    | DoNothing
+
+
+addNeed : Kinto.Client -> Need -> Cmd NeedsMsg
+addNeed kintoClient need =
+    kintoClient
         |> Kinto.create resourceNeed
             (encodeNeed need)
             NeedAdded
@@ -209,18 +236,40 @@ addNeed need =
 -- Task.attempt (Task.andThen (addNeed newNeed >> Task.succeed) Time.now)
 
 
-deleteNeed : String -> Cmd NeedsMsg
-deleteNeed id =
-    client
+deleteNeed : Kinto.Client -> String -> Cmd NeedsMsg
+deleteNeed kintoClient id =
+    kintoClient
         |> Kinto.delete resourceDeletedNeedId id NeedDeleted
         |> Kinto.send
 
 
-getNeedsList : Cmd NeedsMsg
-getNeedsList =
-    client
+getNeedsList : Kinto.Client -> Cmd NeedsMsg
+getNeedsList kintoClient =
+    kintoClient
         |> Kinto.getList resourceNeed NeedsFetched
         |> Kinto.sort [ "-createdAt" ]
+        |> Kinto.send
+
+
+
+-- type alias KintoRoot = {
+-- }
+
+
+decodeUserId : JD.Decoder (Maybe String)
+decodeUserId =
+    JD.maybe (JD.at [ "user", "id" ] JD.string)
+
+
+userIdResource : Kinto.Resource (Maybe String)
+userIdResource =
+    Kinto.Resource (\_ -> Kinto.RootEndpoint) Kinto.RootEndpoint decodeUserId (JD.succeed [])
+
+
+getKintoUserAuth : Kinto.Client -> Cmd SignInMsg
+getKintoUserAuth kintoClient =
+    kintoClient
+        |> Kinto.get userIdResource "" SubmitResponse
         |> Kinto.send
 
 
@@ -233,9 +282,19 @@ getNeedsList =
 --  ╚═════╝ ╚═╝     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝
 
 
-wrapUpdate : (model -> Model) -> (msg -> Msg) -> ( model, Cmd msg ) -> ( Model, Cmd Msg )
-wrapUpdate modelWrap msgWrap ( model, cmd ) =
-    ( modelWrap model, Cmd.map msgWrap cmd )
+wrapUpdate : (model -> Model) -> (msg -> Msg) -> ( model, Cmd msg, ContextMsg ) -> ( Model, Cmd Msg )
+wrapUpdate modelWrap msgWrap ( model, cmd, contextMsg ) =
+    case contextMsg of
+        GotoPage ( newModel, newMsg ) ->
+            ( newModel, newMsg )
+
+        DoNothing ->
+            ( modelWrap model, Cmd.map msgWrap cmd )
+
+
+andDoNothing : model -> ( model, Cmd msg, ContextMsg )
+andDoNothing model =
+    ( model, Cmd.none, DoNothing )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -244,32 +303,52 @@ update msg model =
         ( SignInMsg subMsg, SignInPage subModel ) ->
             (case subMsg of
                 WriteUser user ->
-                    ( { subModel | user = user }, Cmd.none )
+                    { subModel | user = user } |> andDoNothing
 
                 WritePassword password ->
-                    ( { subModel | password = password }, Cmd.none )
+                    { subModel | password = password } |> andDoNothing
 
                 WritePasswordConfirmation password ->
-                    ( { subModel | passwordConfirmation = password }, Cmd.none )
+                    { subModel | passwordConfirmation = password } |> andDoNothing
 
                 ToggleSignUp ->
-                    ( { subModel | signUp = not subModel.signUp }, Cmd.none )
+                    { subModel | signUp = not subModel.signUp } |> andDoNothing
 
                 Submit ->
-                    ( subModel, Cmd.none )
+                    let
+                        kintoAuth =
+                            Kinto.Basic subModel.user subModel.password
+                    in
+                    ( { subModel | signInStatus = Submitting }, getKintoUserAuth (client kintoAuth), DoNothing )
 
-                SubmitResponse (Ok _) ->
-                    ( subModel, Cmd.none )
+                SubmitResponse (Ok maybeUserId) ->
+                    case maybeUserId of
+                        Just userId ->
+                            ( subModel, Cmd.none, GotoPage (needsInit (Kinto.Basic subModel.user subModel.password)) )
+
+                        Nothing ->
+                            if subModel.signUp then
+                                { subModel | signInStatus = SubmittedError "Account with that name already exists" "" }
+                                    |> andDoNothing
+
+                            else
+                                { subModel | signInStatus = SubmittedError "Incorrect username or password" "" }
+                                    |> andDoNothing
 
                 SubmitResponse (Err err) ->
-                    ( subModel, Cmd.none )
+                    { subModel | signInStatus = SubmittedError "Oops, server error (email me to zequez@gmail.com)" (Kinto.errorToString err) }
+                        |> andDoNothing
             )
                 |> wrapUpdate SignInPage SignInMsg
 
         ( NeedsMsg subMsg, NeedsPage subModel ) ->
+            let
+                kintoClient =
+                    client subModel.auth
+            in
             (case subMsg of
                 NeedAdded (Ok need) ->
-                    ( { subModel
+                    { subModel
                         | needs =
                             subModel.needs
                                 |> List.map
@@ -280,42 +359,44 @@ update msg model =
                                         else
                                             n
                                     )
-                      }
-                    , Cmd.none
-                    )
+                    }
+                        |> andDoNothing
 
                 NeedAdded (Err err) ->
                     -- let
                     --     _ =
                     --         Debug.log "Error while creating `need` record" err
                     -- in
-                    ( subModel, Cmd.none )
+                    subModel |> andDoNothing
 
                 NeedsFetched (Ok needPager) ->
-                    ( { subModel | needs = needPager.objects, connectionStatus = Loaded }, Cmd.none )
+                    { subModel | needs = needPager.objects, connectionStatus = Loaded }
+                        |> andDoNothing
 
                 NeedsFetched (Err err) ->
                     -- let
                     --     _ =
                     --         Debug.log "Error while getting list of `need` records" err
                     -- in
-                    ( { subModel | connectionStatus = Error }, Cmd.none )
+                    { subModel | connectionStatus = Error }
+                        |> andDoNothing
 
                 NeedDeleted (Ok need) ->
-                    ( subModel, Cmd.none )
+                    subModel |> andDoNothing
 
                 NeedDeleted (Err err) ->
                     -- let
                     --     _ =
                     --         Debug.log "Failed to delete need" err
                     -- in
-                    ( subModel, Cmd.none )
+                    subModel |> andDoNothing
 
                 NewNeedChange description ->
-                    ( { subModel | newNeedDescription = description }, Cmd.none )
+                    { subModel | newNeedDescription = description }
+                        |> andDoNothing
 
                 NewNeedSubmit ->
-                    ( subModel, Task.perform NewNeedSubmitTimed Time.now )
+                    ( subModel, Task.perform NewNeedSubmitTimed Time.now, DoNothing )
 
                 NewNeedSubmitTimed posix ->
                     let
@@ -326,7 +407,8 @@ update msg model =
                         | newNeedDescription = ""
                         , needs = newNeed :: subModel.needs
                       }
-                    , addNeed newNeed
+                    , addNeed kintoClient newNeed
+                    , DoNothing
                     )
 
                 NeedDelete id ->
@@ -335,11 +417,13 @@ update msg model =
                             subModel.needs
                                 |> removeNeedById id
                       }
-                    , deleteNeed id
+                    , deleteNeed kintoClient id
+                    , DoNothing
                     )
 
                 SetTime zone posix ->
-                    ( { subModel | timeZone = zone, timePosix = posix }, Cmd.none )
+                    { subModel | timeZone = zone, timePosix = posix }
+                        |> andDoNothing
             )
                 |> wrapUpdate NeedsPage NeedsMsg
 
@@ -389,6 +473,10 @@ view model =
 
 signInView : SignInModel -> Html SignInMsg
 signInView model =
+    let
+        disableInputs =
+            disabled (model.signInStatus == Submitting)
+    in
     div [ class "container mx-auto max-w-md" ]
         [ div [ class "text-2xl mb-4 tracking-wide" ] [ text "Sign in" ]
         , input
@@ -397,6 +485,7 @@ signInView model =
             , placeholder "User"
             , inputClass
             , classFocusRing
+            , disableInputs
             ]
             []
         , input
@@ -406,32 +495,62 @@ signInView model =
             , placeholder "Password"
             , inputClass
             , classFocusRing
+            , disableInputs
             ]
             []
         , if model.signUp then
             input
-                [ value model.password
+                [ value model.passwordConfirmation
                 , type_ "password"
                 , onInput WritePasswordConfirmation
                 , placeholder "Password confirmation"
                 , inputClass
                 , classFocusRing
+                , disableInputs
                 ]
                 []
 
           else
             div [] []
         , div [ class "flex justify-end items-center" ]
-            [ a
-                [ class "mr-2 text-yellow-500 cursor-pointer"
-                , onClick ToggleSignUp
-                ]
-                [ text (iif model.signUp "Sign in" "Sign up" ++ " instead?") ]
+            [ if model.signInStatus == Submitting then
+                div [ class "text-gray-500 flex text-2xl animation-rotate animation-slower mr-4" ]
+                    [ Icon.viewIcon Icon.cog
+                    ]
+
+              else
+                a
+                    [ class "mr-2 text-yellow-500 cursor-pointer"
+                    , onClick ToggleSignUp
+                    ]
+                    [ text (iif model.signUp "Sign in" "Sign up" ++ " instead?") ]
             , button
-                [ class "bg-yellow-500 text-white py-2 px-4 rounded-md font-bold tracking-wide uppercase"
+                [ class "bg-yellow-500 text-white py-2 px-4 rounded-md font-bold tracking-wide uppercase disabled:opacity-50"
+                , classFocusRing
+                , disableInputs
+                , onClick Submit
+                , disabled
+                    ((model.signInStatus == Submitting)
+                        || (model.user == "")
+                        || (model.password == "")
+                        || (model.signUp && model.password /= model.passwordConfirmation)
+                    )
                 ]
                 [ text (iif model.signUp "Sign up" "Sign in") ]
             ]
+        , case model.signInStatus of
+            SubmittedError err errDetails ->
+                div [ class "bg-red-300 px-4 py-2 mt-4 text-white rounded-md ring-2 ring-red-300" ]
+                    [ div [] [ text err ]
+                    , if errDetails /= "" then
+                        code [ class "text-sm" ] [ text errDetails ]
+
+                      else
+                        div [] []
+                    ]
+
+            _ ->
+                div [] []
         ]
 
 
@@ -543,9 +662,9 @@ dbBucket =
     "default"
 
 
-client : Kinto.Client
-client =
-    Kinto.client EnvConstants.kintoHost (Kinto.Basic "admin" "adminPassword123")
+client : Kinto.Auth -> Kinto.Client
+client auth =
+    Kinto.client EnvConstants.kintoHost auth
 
 
 onEnter : msg -> Html.Attribute msg

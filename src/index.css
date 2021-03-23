@@ -70,3 +70,7 @@
   animation-iteration-count: infinite;
   animation-timing-function: linear;
 }
+
+.animation-slower {
+  animation-duration: 2.5s;
+}
