@@ -6,7 +6,7 @@ import FontAwesome.Icon as Icon exposing (Icon)
 import FontAwesome.Solid as Icon
 import FontAwesome.Styles
 import Html exposing (Html, a, br, button, div, h2, hr, img, input, option, p, select, span, text)
-import Html.Attributes exposing (class, classList, href, placeholder, src, style, target, title, value)
+import Html.Attributes exposing (class, classList, href, placeholder, src, style, target, title, type_, value)
 import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
@@ -95,14 +95,37 @@ emptyNeed =
 --     { name : String
 --     , needs : List Need
 --     }
+-- type alias Model =
+--     Page
 
 
-type alias Model =
+type Model
+    = SignInPage SignInModel
+    | NeedsPage NeedsModel
+
+
+type alias SignInModel =
+    { user : String
+    , password : String
+    , passwordConfirmation : String
+    , signInStatus : SignInStatus
+    , signUp : Bool
+    }
+
+
+type SignInStatus
+    = NotSubmitted
+    | PasswordIncorrect
+    | SubmittedError
+
+
+type alias NeedsModel =
     { needs : List Need
     , connectionStatus : ConnectionStatus
     , newNeedDescription : String
     , timeZone : Time.Zone
     , timePosix : Posix
+    , auth : Kinto.Auth
     }
 
 
@@ -118,20 +141,23 @@ type alias Flags =
 
 init : Flags -> ( Model, Cmd Msg )
 init flags =
-    ( { needs = []
-      , connectionStatus = Loading
-      , newNeedDescription = ""
-      , timePosix = Time.millisToPosix 0
-      , timeZone = Time.utc
-      }
-    , Cmd.batch
-        [ getNeedsList
-        , getTime
-        ]
+    ( SignInPage (SignInModel "" "" "" NotSubmitted False)
+      -- { needs = []
+      --   , connectionStatus = Loading
+      --   , newNeedDescription = ""
+      --   , timePosix = Time.millisToPosix 0
+      --   , timeZone = Time.utc
+      --   , auth = Kinto.NoAuth
+      --   }
+      -- , Cmd.batch
+      --     [ getNeedsList
+      --     , getTime
+      --     ]
+    , Cmd.none
     )
 
 
-getTime : Cmd Msg
+getTime : Cmd NeedsMsg
 getTime =
     Task.perform identity (Task.map2 SetTime Time.here Time.now)
 
@@ -146,6 +172,20 @@ getTime =
 
 
 type Msg
+    = SignInMsg SignInMsg
+    | NeedsMsg NeedsMsg
+
+
+type SignInMsg
+    = WriteUser String
+    | WritePassword String
+    | WritePasswordConfirmation String
+    | ToggleSignUp
+    | Submit
+    | SubmitResponse (Result Kinto.Error String)
+
+
+type NeedsMsg
     = NeedAdded (Result Kinto.Error Need)
     | NeedsFetched (Result Kinto.Error (Kinto.Pager Need))
     | NeedDeleted (Result Kinto.Error String)
@@ -156,7 +196,7 @@ type Msg
     | SetTime Time.Zone Posix
 
 
-addNeed : Need -> Cmd Msg
+addNeed : Need -> Cmd NeedsMsg
 addNeed need =
     client
         |> Kinto.create resourceNeed
@@ -169,14 +209,14 @@ addNeed need =
 -- Task.attempt (Task.andThen (addNeed newNeed >> Task.succeed) Time.now)
 
 
-deleteNeed : String -> Cmd Msg
+deleteNeed : String -> Cmd NeedsMsg
 deleteNeed id =
     client
         |> Kinto.delete resourceDeletedNeedId id NeedDeleted
         |> Kinto.send
 
 
-getNeedsList : Cmd Msg
+getNeedsList : Cmd NeedsMsg
 getNeedsList =
     client
         |> Kinto.getList resourceNeed NeedsFetched
@@ -193,81 +233,122 @@ getNeedsList =
 --  ╚═════╝ ╚═╝     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝
 
 
+wrapUpdate : (model -> Model) -> (msg -> Msg) -> ( model, Cmd msg ) -> ( Model, Cmd Msg )
+wrapUpdate modelWrap msgWrap ( model, cmd ) =
+    ( modelWrap model, Cmd.map msgWrap cmd )
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case msg of
-        NeedAdded (Ok need) ->
-            ( { model
-                | needs =
-                    model.needs
-                        |> List.map
-                            (\n ->
-                                if n.id == Nothing && n.description == need.description then
-                                    { n | id = need.id }
+    case ( msg, model ) of
+        ( SignInMsg subMsg, SignInPage subModel ) ->
+            (case subMsg of
+                WriteUser user ->
+                    ( { subModel | user = user }, Cmd.none )
 
-                                else
-                                    n
-                            )
-              }
-            , Cmd.none
+                WritePassword password ->
+                    ( { subModel | password = password }, Cmd.none )
+
+                WritePasswordConfirmation password ->
+                    ( { subModel | passwordConfirmation = password }, Cmd.none )
+
+                ToggleSignUp ->
+                    ( { subModel | signUp = not subModel.signUp }, Cmd.none )
+
+                Submit ->
+                    ( subModel, Cmd.none )
+
+                SubmitResponse (Ok _) ->
+                    ( subModel, Cmd.none )
+
+                SubmitResponse (Err err) ->
+                    ( subModel, Cmd.none )
             )
+                |> wrapUpdate SignInPage SignInMsg
 
-        NeedAdded (Err err) ->
-            -- let
-            --     _ =
-            --         Debug.log "Error while creating `need` record" err
-            -- in
+        ( NeedsMsg subMsg, NeedsPage subModel ) ->
+            (case subMsg of
+                NeedAdded (Ok need) ->
+                    ( { subModel
+                        | needs =
+                            subModel.needs
+                                |> List.map
+                                    (\n ->
+                                        if n.id == Nothing && n.description == need.description then
+                                            { n | id = need.id }
+
+                                        else
+                                            n
+                                    )
+                      }
+                    , Cmd.none
+                    )
+
+                NeedAdded (Err err) ->
+                    -- let
+                    --     _ =
+                    --         Debug.log "Error while creating `need` record" err
+                    -- in
+                    ( subModel, Cmd.none )
+
+                NeedsFetched (Ok needPager) ->
+                    ( { subModel | needs = needPager.objects, connectionStatus = Loaded }, Cmd.none )
+
+                NeedsFetched (Err err) ->
+                    -- let
+                    --     _ =
+                    --         Debug.log "Error while getting list of `need` records" err
+                    -- in
+                    ( { subModel | connectionStatus = Error }, Cmd.none )
+
+                NeedDeleted (Ok need) ->
+                    ( subModel, Cmd.none )
+
+                NeedDeleted (Err err) ->
+                    -- let
+                    --     _ =
+                    --         Debug.log "Failed to delete need" err
+                    -- in
+                    ( subModel, Cmd.none )
+
+                NewNeedChange description ->
+                    ( { subModel | newNeedDescription = description }, Cmd.none )
+
+                NewNeedSubmit ->
+                    ( subModel, Task.perform NewNeedSubmitTimed Time.now )
+
+                NewNeedSubmitTimed posix ->
+                    let
+                        newNeed =
+                            { emptyNeed | description = subModel.newNeedDescription, createdAt = posix }
+                    in
+                    ( { subModel
+                        | newNeedDescription = ""
+                        , needs = newNeed :: subModel.needs
+                      }
+                    , addNeed newNeed
+                    )
+
+                NeedDelete id ->
+                    ( { subModel
+                        | needs =
+                            subModel.needs
+                                |> removeNeedById id
+                      }
+                    , deleteNeed id
+                    )
+
+                SetTime zone posix ->
+                    ( { subModel | timeZone = zone, timePosix = posix }, Cmd.none )
+            )
+                |> wrapUpdate NeedsPage NeedsMsg
+
+        ( _, _ ) ->
             ( model, Cmd.none )
 
-        NeedsFetched (Ok needPager) ->
-            ( { model | needs = needPager.objects, connectionStatus = Loaded }, Cmd.none )
 
-        NeedsFetched (Err err) ->
-            -- let
-            --     _ =
-            --         Debug.log "Error while getting list of `need` records" err
-            -- in
-            ( { model | connectionStatus = Error }, Cmd.none )
 
-        NeedDeleted (Ok need) ->
-            ( model, Cmd.none )
-
-        NeedDeleted (Err err) ->
-            -- let
-            --     _ =
-            --         Debug.log "Failed to delete need" err
-            -- in
-            ( model, Cmd.none )
-
-        NewNeedChange description ->
-            ( { model | newNeedDescription = description }, Cmd.none )
-
-        NewNeedSubmit ->
-            ( model, Task.perform NewNeedSubmitTimed Time.now )
-
-        NewNeedSubmitTimed posix ->
-            let
-                newNeed =
-                    { emptyNeed | description = model.newNeedDescription, createdAt = posix }
-            in
-            ( { model
-                | newNeedDescription = ""
-                , needs = newNeed :: model.needs
-              }
-            , addNeed newNeed
-            )
-
-        NeedDelete id ->
-            ( { model
-                | needs =
-                    model.needs
-                        |> removeNeedById id
-              }
-            , deleteNeed id
-            )
-
-        SetTime zone posix ->
-            ( { model | timeZone = zone, timePosix = posix }, Cmd.none )
+-- mapCmdModel :
 
 
 removeNeedById : String -> List Need -> List Need
@@ -297,7 +378,72 @@ view : Model -> Html Msg
 view model =
     div [ class "p-8 bg-gray-100 min-h-full" ]
         [ FontAwesome.Styles.css
-        , div [ class "text-2xl mb-4 tracking-wide" ] [ text "List of needs" ]
+        , case model of
+            NeedsPage subModel ->
+                Html.map NeedsMsg (needsView subModel)
+
+            SignInPage subModel ->
+                Html.map SignInMsg (signInView subModel)
+        ]
+
+
+signInView : SignInModel -> Html SignInMsg
+signInView model =
+    div [ class "container mx-auto max-w-md" ]
+        [ div [ class "text-2xl mb-4 tracking-wide" ] [ text "Sign in" ]
+        , input
+            [ value model.user
+            , onInput WriteUser
+            , placeholder "User"
+            , inputClass
+            , classFocusRing
+            ]
+            []
+        , input
+            [ value model.password
+            , type_ "password"
+            , onInput WritePassword
+            , placeholder "Password"
+            , inputClass
+            , classFocusRing
+            ]
+            []
+        , if model.signUp then
+            input
+                [ value model.password
+                , type_ "password"
+                , onInput WritePasswordConfirmation
+                , placeholder "Password confirmation"
+                , inputClass
+                , classFocusRing
+                ]
+                []
+
+          else
+            div [] []
+        , div [ class "flex justify-end items-center" ]
+            [ a
+                [ class "mr-2 text-yellow-500 cursor-pointer"
+                , onClick ToggleSignUp
+                ]
+                [ text (iif model.signUp "Sign in" "Sign up" ++ " instead?") ]
+            , button
+                [ class "bg-yellow-500 text-white py-2 px-4 rounded-md font-bold tracking-wide uppercase"
+                ]
+                [ text (iif model.signUp "Sign up" "Sign in") ]
+            ]
+        ]
+
+
+inputClass : Html.Attribute msg
+inputClass =
+    class "block w-full mb-4 h-12 px-4 py-2 text-lg rounded-md ring-1 ring-gray-200"
+
+
+needsView : NeedsModel -> Html NeedsMsg
+needsView model =
+    div []
+        [ div [ class "text-2xl mb-4 tracking-wide" ] [ text "List of needs" ]
         , case model.connectionStatus of
             Loading ->
                 div [ class "text-xl text-gray-400" ] [ text "List of needs is loading..." ]
@@ -323,7 +469,7 @@ view model =
         ]
 
 
-needView : Need -> Html Msg
+needView : Need -> Html NeedsMsg
 needView need =
     div [ class "flex h-12 mb-2" ]
         [ div [ class "flex-grow bg-white py-2 px-4 rounded-md shadow-sm flex items-center" ] [ text need.description ]
@@ -351,7 +497,7 @@ classFocusRing =
     class "focus:outline-none focus:ring focus:ring-green-500 focus:ring-opacity-50"
 
 
-newNeedView : String -> Html Msg
+newNeedView : String -> Html NeedsMsg
 newNeedView description =
     div [ class "flex mt-4 h-12" ]
         [ input
@@ -365,7 +511,7 @@ newNeedView description =
             ]
             []
         , button
-            [ class "w-12 p-3 ml-2 shadow-sm bg-green-500 text-white rounded-md"
+            [ class "w-12 p-3 ml-2 shadow-sm bg-green-500 text-white rounded-md "
             , classFocusRing
             , onClick NewNeedSubmit
             ]
@@ -402,7 +548,7 @@ client =
     Kinto.client EnvConstants.kintoHost (Kinto.Basic "admin" "adminPassword123")
 
 
-onEnter : Msg -> Html.Attribute Msg
+onEnter : msg -> Html.Attribute msg
 onEnter msg =
     let
         isEnter code =
@@ -413,3 +559,12 @@ onEnter msg =
                 JD.fail "not ENTER"
     in
     on "keydown" (JD.andThen isEnter keyCode)
+
+
+iif : Bool -> val -> val -> val
+iif condition ifTrue ifFalse =
+    if condition then
+        ifTrue
+
+    else
+        ifFalse
