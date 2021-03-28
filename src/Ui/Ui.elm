@@ -1,11 +1,22 @@
 module Ui.Ui exposing (..)
 
 import Html exposing (Attribute, Html, a, button, code, div, input, text)
-import Html.Attributes exposing (attribute, class, disabled, placeholder, type_, value)
+import Html.Attributes exposing (attribute, class, disabled, href, placeholder, type_, value)
 import Html.Events exposing (on, onClick, onInput)
 
 
-primaryButton : List (Html.Attribute msg) -> List (Html msg) -> Html msg
+mainSidebarView : String -> List (Attribute msg) -> List (Html msg) -> Html msg
+mainSidebarView title attributes children =
+    div (class "w-32 bg-gray-100 shadow-md" :: attributes)
+        (a [ class "flex h-12 items-center bg-green-500  text-white hover:bg-green-400", href "/" ]
+            [ div [ class "text-2xl mx-4" ] [ text "❮" ]
+            , div [ class "text-xl" ] [ text title ]
+            ]
+            :: children
+        )
+
+
+primaryButton : List (Attribute msg) -> List (Html msg) -> Html msg
 primaryButton attributes children =
     button
         (class """
@@ -21,11 +32,11 @@ primaryButton attributes children =
         children
 
 
-classInput : Html.Attribute msg
+classInput : Attribute msg
 classInput =
     class "block w-full mb-4 h-12 px-4 py-2 text-lg rounded-md ring-1 ring-gray-200"
 
 
-classFocusRing : Html.Attribute msg
+classFocusRing : Attribute msg
 classFocusRing =
     class "focus:outline-none focus:ring focus:ring-green-500 focus:ring-opacity-50"

@@ -6,11 +6,12 @@ import Dict exposing (Dict)
 import EnvConstants
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
-import Html exposing (Html, a, button, code, div, input, span, text)
-import Html.Attributes exposing (class, classList, disabled, href, placeholder, type_, value)
+import Html exposing (Attribute, Html, a, button, code, div, input, span, text)
+import Html.Attributes exposing (class, classList, disabled, href, placeholder, style, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as JD
 import Kinto
+import Ui.Ui as Ui
 import Utils.Utils exposing (classFocusRing, classInput, dictFromRecordLike, iif)
 
 
@@ -117,6 +118,7 @@ type Msg
     | RequestShops
     | RequestShopsFetched (Result Kinto.Error (Kinto.Pager Shop))
     | SelectMarket String
+    | SelectShop String
     | Authenticated ( String, String )
     | LoggedOut
 
@@ -134,7 +136,15 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         SelectMarket id ->
-            ( { model | selectedMarket = Just id }, Cmd.none )
+            ( { model
+                | selectedMarket = Just id
+                , selectedShop = Nothing
+              }
+            , Cmd.none
+            )
+
+        SelectShop id ->
+            ( { model | selectedShop = Just id }, Cmd.none )
 
         Authenticated ( user, pass ) ->
             ( { model | user = user, auth = Just (Kinto.Basic user pass) }, Cmd.none )
@@ -183,21 +193,9 @@ view model =
                         shopsIds
                             |> List.filterMap (\id -> Dict.get id model.shops)
                     )
-
-        -- model.selectedMarket
-        --     |> Maybe.andThen (\id -> marketById id model.markets)
-        --     |> Maybe.map (\m -> m.shops
-        --       |>
-        --     )
     in
     div [ class "bg-gray-200 min-h-full flex" ]
-        [ div [ class "w-32 bg-gray-100 shadow-md" ]
-            [ a [ class "flex h-12 items-center bg-green-500 text-white hover:bg-green-400", href "/" ]
-                [ div [ class "text-2xl mx-4" ] [ text "❮" ]
-                , div [ class "text-xl" ] [ text "Agora" ]
-                ]
-            , marketListView markets (Maybe.withDefault "" model.selectedMarket)
-            ]
+        [ Ui.mainSidebarView "Agora" [] [ marketListView markets (Maybe.withDefault "" model.selectedMarket) ]
         , div [ class "flex-grow py-8 px-12" ]
             [ if model.user /= "" then
                 div [] [ text ("Woo! Welcome " ++ model.user) ]
@@ -226,7 +224,7 @@ marketById id markets =
 
 shopsListView : List Shop -> String -> Html Msg
 shopsListView shops selectedShop =
-    div [ class "flex flex-col" ]
+    div [ class "flex flex-col p-2" ]
         (shops
             |> List.map (\s -> shopListButtonView s (s.id == selectedShop))
         )
@@ -234,9 +232,27 @@ shopsListView shops selectedShop =
 
 shopListButtonView : Shop -> Bool -> Html Msg
 shopListButtonView shop isSelected =
-    div [ class "", classList [ ( "bg-gray-200", isSelected ) ] ]
-        [ span [] [ text shop.icon ]
-        , span [] [ text shop.name ]
+    div
+        [ class """
+            px-2 py-1 mb-2
+            bg-white bg-opacity-50
+            hover:bg-opacity-100
+            cursor-pointer rounded-md shadow-sm
+            transform transition-transform
+            """
+        , classList
+            [ ( "text-gray-600", not isSelected )
+            , ( "bg-green-500 text-white bg-opacity-100 font-semibold shadow-md -translate-x-4", isSelected )
+            ]
+
+        -- , if isSelected then
+        --     style "transform" "translateX(-0.5rem)"
+        --   else
+        --     style "" ""
+        , onClick (SelectShop shop.id)
+        ]
+        [ span [ class "mr-2" ] [ text shop.icon ]
+        , span [ class "" ] [ text shop.name ]
         ]
 
 
@@ -316,10 +332,10 @@ market2 =
 
 market3 : Market
 market3 =
-    { id = "toolsmakers"
-    , name = "Herramientista"
-    , description = "Mercado local de herramientas artesanales"
-    , icon = "🛠"
+    { id = "artesano"
+    , name = "Artesano"
+    , description = "Mercado artesano local"
+    , icon = "🧶"
     , admin = "Zequez"
     , team = []
     , shops = []
