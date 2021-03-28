@@ -1,5 +1,6 @@
 module Agora.Main exposing (..)
 
+import Agent.SignIn as Agent
 import Browser
 import Dict exposing (Dict)
 import EnvConstants
@@ -117,6 +118,7 @@ type Msg
     | RequestShopsFetched (Result Kinto.Error (Kinto.Pager Shop))
     | SelectMarket String
     | Authenticated ( String, String )
+    | LoggedOut
 
 
 
@@ -135,11 +137,10 @@ update msg model =
             ( { model | selectedMarket = Just id }, Cmd.none )
 
         Authenticated ( user, pass ) ->
-            let
-                _ =
-                    Debug.log "Authenticated YES!" (user ++ ":" ++ pass)
-            in
-            ( model, Cmd.none )
+            ( { model | user = user, auth = Just (Kinto.Basic user pass) }, Cmd.none )
+
+        LoggedOut ->
+            ( { model | user = "", auth = Nothing }, Cmd.none )
 
         _ ->
             model
@@ -198,7 +199,18 @@ view model =
             , marketListView markets (Maybe.withDefault "" model.selectedMarket)
             ]
         , div [ class "flex-grow py-8 px-12" ]
-            []
+            [ if model.user /= "" then
+                div [] [ text ("Woo! Welcome " ++ model.user) ]
+
+              else
+                div [] []
+            , Agent.element
+                [ Agent.kintoKeys EnvConstants.kintoHost
+                , Agent.onAgentKeys Authenticated
+                , Agent.onLogout LoggedOut
+                ]
+                []
+            ]
         , case maybeMarketShops of
             Just marketShops ->
                 div [ class "w-60 bg-gray-100 shadow-md" ]

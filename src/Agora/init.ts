@@ -1,5 +1,8 @@
 import Elm from "./Main.elm";
 import MapboxElement from "../MapboxElement/MapboxElement";
+import registerAgentSignIn from "../Agent/SignIn.Element";
+
+registerAgentSignIn();
 
 import ElmDebugger from "elm-debug-transformer";
 ElmDebugger.register();
