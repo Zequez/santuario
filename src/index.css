@@ -77,7 +77,7 @@
 
 @keyframes animate-fade-slide-in {
   from {
-    transform: translate(-1rem, 1rem);
+    transform: translate(1rem, -1rem);
     opacity: 0;
   }
 

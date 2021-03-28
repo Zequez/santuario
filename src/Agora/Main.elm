@@ -2,12 +2,13 @@ module Agora.Main exposing (..)
 
 import Agent.SignIn as Agent
 import Browser
+import Communities.Communities as Communities exposing (Community, IPFSAddress, communities)
 import Dict exposing (Dict)
 import EnvConstants
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
-import Html exposing (Attribute, Html, a, button, code, div, input, span, text)
-import Html.Attributes exposing (class, classList, disabled, href, placeholder, style, type_, value)
+import Html exposing (Attribute, Html, a, button, code, div, img, input, span, text)
+import Html.Attributes exposing (class, classList, disabled, href, placeholder, src, style, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as JD
 import Kinto
@@ -32,6 +33,7 @@ type alias Model =
     , shops : Dict String Shop
     , selectedMarket : Maybe String
     , selectedShop : Maybe String
+    , community : Maybe Community
     }
 
 
@@ -56,6 +58,7 @@ init =
         (dictFromRecordLike [ shop1, shop2, shop3, shop4, shop5, shop6, shop7, shop8 ])
         (Just "vegan")
         Nothing
+        (List.head communities)
     , Cmd.none
     )
 
@@ -208,38 +211,71 @@ view model =
                             |> List.filterMap (\id -> Dict.get id model.shops)
                     )
     in
-    div [ class "bg-gray-200 min-h-full flex" ]
-        [ mainSidebarView model markets
-        , div [ class "p-12 flex-grow" ]
-            [ if model.user /= "" then
-                div [] [ text ("Woo! Welcome " ++ model.user) ]
+    div [ class "flex flex-col h-full" ]
+        [ topBarView model
+        , div [ class "bg-gray-200 flex-grow flex" ]
+            [ mainSidebarView model markets
+            , div [ class "p-12 flex-grow" ]
+                [ if model.user /= "" then
+                    div [] [ text ("Woo! Welcome " ++ model.user) ]
 
-              else
-                div [] []
+                  else
+                    div [] []
+                ]
+            , case maybeMarketShops of
+                Just marketShops ->
+                    shopsListSidebarView marketShops model.selectedShop
+
+                Nothing ->
+                    div [] []
             ]
-        , case maybeMarketShops of
-            Just marketShops ->
-                shopsListSidebarView marketShops model.selectedShop
+        ]
+
+
+topBarView : Model -> Html Msg
+topBarView model =
+    div [ class "bg-green-500 bg-opacity-75 h-12 flex" ]
+        [ div [ class "flex-grow flex justify-start text-white" ]
+            [ a [ class "flex items-center flex-stretch text-2xl px-4 hover:bg-white hover:bg-opacity-25 ", href "/" ]
+                [ text "❮"
+                ]
+            , div [ class "text-xl px-2 flex items-center" ] [ text "Agora" ]
+            ]
+        , userAccountButtonView model.user model.accountPopupVisible
+        ]
+
+
+mainSidebarView : Model -> List Market -> Html Msg
+mainSidebarView model markets =
+    div
+        [ class "flex flex-shrink-0 flex-col bg-gray-100 shadow-md w-32" ]
+        [ marketListView markets (Maybe.withDefault "" model.selectedMarket)
+        , case model.community of
+            Just community ->
+                div
+                    [ class "text-gray-100 hover:bg-gray-200 font-semibold flex flex-col items-center justify-center py-2 cursor-pointer"
+
+                    -- , style "background-image" ("url(" ++ ipfsUrl community.banner ++ ")")
+                    ]
+                    [ div [ class "h-24 w-24 p-1 bg-gray-200 border border-gray-300 rounded-full shadow-sm" ] [ img [ class "rounded-full", src (ipfsUrl community.logo) ] [] ]
+                    , div [ class "bg-black bg-opacity-50 px-2 rounded-md -mt-6" ] [ text "Mar del Plata" ]
+                    ]
 
             Nothing ->
                 div [] []
         ]
 
 
-mainSidebarView : Model -> List Market -> Html Msg
-mainSidebarView model markets =
-    Ui.mainSidebarView "Agora"
-        [ class "" ]
-        [ marketListView markets (Maybe.withDefault "" model.selectedMarket)
-        , userAccountButtonView model.user model.accountPopupVisible
-        ]
+ipfsUrl : IPFSAddress -> String
+ipfsUrl (Communities.IPFSAddress hash) =
+    "https://gateway.pinata.cloud/ipfs/" ++ hash
 
 
 userAccountButtonView : String -> Bool -> Html Msg
 userAccountButtonView userName popupVisible =
     div [ class "flex-shrink-0" ]
         [ div [ class """
-            flex flex-col h-12 items-center justify-center
+            h-full flex flex-col w-32 items-center justify-center
             bg-yellow-500 text-white bg-opacity-75 hover:bg-opacity-100
             cursor-pointer""", onClick ToggleAccountPopup ]
             [ div [ class "h-4 w-4 mb-1" ] [ Icon.viewIcon Icon.user ]
@@ -257,7 +293,7 @@ userAccountButtonView userName popupVisible =
             [ div [ class "fixed inset-0 z-20", classList [ ( "hidden", not popupVisible ) ], onClick ToggleAccountPopup ] []
             , div
                 [ class """
-                        absolute bottom-0 left-0 w-80 ml-4 mb-4 z-30
+                        absolute top-0 right-0 w-80 mr-4 mt-4 z-30
                          shadow-lg rounded-lg animate-fade-slide-in bg-white """
                 , classList [ ( "hidden", not popupVisible ) ]
                 ]
