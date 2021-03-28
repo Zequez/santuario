@@ -1,6 +1,6 @@
 module KintoStorage.Main exposing (..)
 
-import Agent.SignIn as SignIn
+import Agent.SignIn as Agent
 import Browser
 import EnvConstants
 import FontAwesome.Icon as Icon exposing (Icon)
@@ -14,6 +14,7 @@ import Json.Encode as JE
 import Kinto
 import Task
 import Time exposing (Posix)
+import Ui.Ui as Ui
 import Utils.Utils exposing (classFocusRing, classInput, onEnter)
 
 
@@ -92,32 +93,20 @@ emptyNeed =
     }
 
 
-
--- type alias Player =
---     { name : String
---     , needs : List Need
---     }
--- type alias Model =
---     Page
-
-
-type Model
-    = SignInPage SignIn.Model
-    | NeedsPage NeedsModel
-
-
-type alias NeedsModel =
+type alias Model =
     { needs : List Need
-    , connectionStatus : ConnectionStatus
+    , needsLoadingStatus : NeedsLoadingStatus
     , newNeedDescription : String
     , timeZone : Time.Zone
     , timePosix : Posix
-    , auth : Kinto.Auth
+    , user : String
+    , auth : Maybe Kinto.Auth
     }
 
 
-type ConnectionStatus
-    = Loading
+type NeedsLoadingStatus
+    = NotAsked
+    | Loading
     | Error
     | Loaded
 
@@ -127,33 +116,20 @@ type alias Flags =
 
 
 init : Flags -> ( Model, Cmd Msg )
-init flags =
-    wrapInit SignInPage SignInMsg SignIn.init
-
-
-wrapInit : (model -> Model) -> (msg -> Msg) -> ( model, Cmd msg ) -> ( Model, Cmd Msg )
-wrapInit modelWrap msgWrap ( model, cmd ) =
-    ( modelWrap model, Cmd.map msgWrap cmd )
-
-
-needsInit : Kinto.Auth -> ( Model, Cmd Msg )
-needsInit auth =
-    ( NeedsPage
-        { needs = []
-        , connectionStatus = Loading
-        , newNeedDescription = ""
-        , timePosix = Time.millisToPosix 0
-        , timeZone = Time.utc
-        , auth = auth
-        }
-    , Cmd.batch
-        [ Cmd.map NeedsMsg (getNeedsList (client auth))
-        , Cmd.map NeedsMsg getTime
-        ]
+init _ =
+    ( { needs = []
+      , needsLoadingStatus = NotAsked
+      , newNeedDescription = ""
+      , timePosix = Time.millisToPosix 0
+      , timeZone = Time.utc
+      , user = ""
+      , auth = Nothing
+      }
+    , Cmd.none
     )
 
 
-getTime : Cmd NeedsMsg
+getTime : Cmd Msg
 getTime =
     Task.perform identity (Task.map2 SetTime Time.here Time.now)
 
@@ -168,12 +144,8 @@ getTime =
 
 
 type Msg
-    = SignInMsg SignIn.Msg
-    | NeedsMsg NeedsMsg
-
-
-type NeedsMsg
     = NeedAdded (Result Kinto.Error Need)
+    | NeedsFetch
     | NeedsFetched (Result Kinto.Error (Kinto.Pager Need))
     | NeedDeleted (Result Kinto.Error String)
     | NewNeedChange String
@@ -181,14 +153,11 @@ type NeedsMsg
     | NewNeedSubmitTimed Posix
     | NeedDelete String
     | SetTime Time.Zone Posix
+    | Authenticated ( String, String )
+    | LoggedOut
 
 
-type ContextMsg
-    = GotoPage ( Model, Cmd Msg )
-    | DoNothing
-
-
-addNeed : Kinto.Client -> Need -> Cmd NeedsMsg
+addNeed : Kinto.Client -> Need -> Cmd Msg
 addNeed kintoClient need =
     kintoClient
         |> Kinto.create resourceNeed
@@ -197,18 +166,14 @@ addNeed kintoClient need =
         |> Kinto.send
 
 
-
--- Task.attempt (Task.andThen (addNeed newNeed >> Task.succeed) Time.now)
-
-
-deleteNeed : Kinto.Client -> String -> Cmd NeedsMsg
+deleteNeed : Kinto.Client -> String -> Cmd Msg
 deleteNeed kintoClient id =
     kintoClient
         |> Kinto.delete resourceDeletedNeedId id NeedDeleted
         |> Kinto.send
 
 
-getNeedsList : Kinto.Client -> Cmd NeedsMsg
+getNeedsList : Kinto.Client -> Cmd Msg
 getNeedsList kintoClient =
     kintoClient
         |> Kinto.getList resourceNeed NeedsFetched
@@ -225,44 +190,48 @@ getNeedsList kintoClient =
 --  ╚═════╝ ╚═╝     ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚══════╝
 
 
-wrapUpdate : (model -> Model) -> (msg -> Msg) -> ( model, Cmd msg, ContextMsg ) -> ( Model, Cmd Msg )
-wrapUpdate modelWrap msgWrap ( model, cmd, contextMsg ) =
-    case contextMsg of
-        GotoPage ( newModel, newMsg ) ->
-            ( newModel, newMsg )
-
-        DoNothing ->
-            ( modelWrap model, Cmd.map msgWrap cmd )
-
-
-andDoNothing : model -> ( model, Cmd msg, ContextMsg )
+andDoNothing : model -> ( model, Cmd msg )
 andDoNothing model =
-    ( model, Cmd.none, DoNothing )
+    ( model, Cmd.none )
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model ) of
-        ( SignInMsg subMsg, SignInPage subModel ) ->
-            (case SignIn.update client subMsg subModel of
-                ( newSubModel, newSubMsg, SignIn.NoOp ) ->
-                    ( newSubModel, newSubMsg, DoNothing )
+    case model.auth of
+        Nothing ->
+            case msg of
+                Authenticated ( user, pass ) ->
+                    let
+                        auth =
+                            Kinto.Basic user pass
 
-                ( newSubModel, newSubMsg, SignIn.Authenticated auth ) ->
-                    ( newSubModel, newSubMsg, GotoPage (needsInit auth) )
-            )
-                |> wrapUpdate SignInPage SignInMsg
+                        _ =
+                            Debug.log "Authenticated yeah!" (user ++ ":" ++ pass)
+                    in
+                    ( { model | user = user, auth = Just auth, needsLoadingStatus = Loading }
+                    , getNeedsList (client auth)
+                    )
 
-        ( NeedsMsg subMsg, NeedsPage subModel ) ->
+                _ ->
+                    let
+                        _ =
+                            Debug.log "Not authentiated cat't do that" msg
+                    in
+                    ( model, Cmd.none )
+
+        Just auth ->
             let
                 kintoClient =
-                    client subModel.auth
+                    client auth
             in
-            (case subMsg of
+            case msg of
+                LoggedOut ->
+                    ( { model | user = "", auth = Nothing }, Cmd.none )
+
                 NeedAdded (Ok need) ->
-                    { subModel
+                    { model
                         | needs =
-                            subModel.needs
+                            model.needs
                                 |> List.map
                                     (\n ->
                                         if n.id == Nothing && n.description == need.description then
@@ -279,10 +248,13 @@ update msg model =
                     --     _ =
                     --         Debug.log "Error while creating `need` record" err
                     -- in
-                    subModel |> andDoNothing
+                    model |> andDoNothing
+
+                NeedsFetch ->
+                    ( model, getNeedsList kintoClient )
 
                 NeedsFetched (Ok needPager) ->
-                    { subModel | needs = needPager.objects, connectionStatus = Loaded }
+                    { model | needs = needPager.objects, needsLoadingStatus = Loaded }
                         |> andDoNothing
 
                 NeedsFetched (Err err) ->
@@ -290,57 +262,53 @@ update msg model =
                     --     _ =
                     --         Debug.log "Error while getting list of `need` records" err
                     -- in
-                    { subModel | connectionStatus = Error }
+                    { model | needsLoadingStatus = Error }
                         |> andDoNothing
 
                 NeedDeleted (Ok need) ->
-                    subModel |> andDoNothing
+                    model |> andDoNothing
 
                 NeedDeleted (Err err) ->
                     -- let
                     --     _ =
                     --         Debug.log "Failed to delete need" err
                     -- in
-                    subModel |> andDoNothing
+                    model |> andDoNothing
 
                 NewNeedChange description ->
-                    { subModel | newNeedDescription = description }
+                    { model | newNeedDescription = description }
                         |> andDoNothing
 
                 NewNeedSubmit ->
-                    ( subModel, Task.perform NewNeedSubmitTimed Time.now, DoNothing )
+                    ( model, Task.perform NewNeedSubmitTimed Time.now )
 
                 NewNeedSubmitTimed posix ->
                     let
                         newNeed =
-                            { emptyNeed | description = subModel.newNeedDescription, createdAt = posix }
+                            { emptyNeed | description = model.newNeedDescription, createdAt = posix }
                     in
-                    ( { subModel
+                    ( { model
                         | newNeedDescription = ""
-                        , needs = newNeed :: subModel.needs
+                        , needs = newNeed :: model.needs
                       }
                     , addNeed kintoClient newNeed
-                    , DoNothing
                     )
 
                 NeedDelete id ->
-                    ( { subModel
+                    ( { model
                         | needs =
-                            subModel.needs
+                            model.needs
                                 |> removeNeedById id
                       }
                     , deleteNeed kintoClient id
-                    , DoNothing
                     )
 
                 SetTime zone posix ->
-                    { subModel | timeZone = zone, timePosix = posix }
+                    { model | timeZone = zone, timePosix = posix }
                         |> andDoNothing
-            )
-                |> wrapUpdate NeedsPage NeedsMsg
 
-        ( _, _ ) ->
-            ( model, Cmd.none )
+                _ ->
+                    ( model, Cmd.none )
 
 
 
@@ -374,20 +342,26 @@ view : Model -> Html Msg
 view model =
     div [ class "p-8 bg-gray-100 min-h-full" ]
         [ FontAwesome.Styles.css
-        , case model of
-            NeedsPage subModel ->
-                Html.map NeedsMsg (needsView subModel)
+        , case model.auth of
+            Just auth ->
+                needsView model
 
-            SignInPage subModel ->
-                Html.map SignInMsg (SignIn.view subModel)
+            Nothing ->
+                Agent.element EnvConstants.kintoHost Authenticated LoggedOut
         ]
 
 
-needsView : NeedsModel -> Html NeedsMsg
+needsView : Model -> Html Msg
 needsView model =
     div []
         [ div [ class "text-2xl mb-4 tracking-wide" ] [ text "List of needs" ]
-        , case model.connectionStatus of
+        , case model.needsLoadingStatus of
+            NotAsked ->
+                div [ class "text-xl text-gray-400" ]
+                    [ text "We haven't fetched the list of needs yet..."
+                    , Ui.primaryButton [ onClick NeedsFetch ] [ text "Do that" ]
+                    ]
+
             Loading ->
                 div [ class "text-xl text-gray-400" ] [ text "List of needs is loading..." ]
 
@@ -412,7 +386,7 @@ needsView model =
         ]
 
 
-needView : Need -> Html NeedsMsg
+needView : Need -> Html Msg
 needView need =
     div [ class "flex h-12 mb-2" ]
         [ div [ class "flex-grow bg-white py-2 px-4 rounded-md shadow-sm flex items-center" ] [ text need.description ]
@@ -435,7 +409,7 @@ needView need =
         ]
 
 
-newNeedView : String -> Html NeedsMsg
+newNeedView : String -> Html Msg
 newNeedView description =
     div [ class "flex mt-4 h-12" ]
         [ input

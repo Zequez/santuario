@@ -307,8 +307,18 @@ view params state =
 -- ╚══════╝╚══════╝╚═╝     ╚═╝ ╚═════╝╚══════╝╚═╝        ╚═╝   ╚═╝ ╚═════╝ ╚═╝  ╚═══╝
 
 
-element : List (Attribute msg) -> List (Html msg) -> Html msg
-element =
+element : String -> (( String, String ) -> msg) -> msg -> Html msg
+element keys agentKeysMsg logoutMsg =
+    htmlElement
+        [ kintoKeys keys
+        , onAgentKeys agentKeysMsg
+        , onLogout logoutMsg
+        ]
+        []
+
+
+htmlElement : List (Attribute msg) -> List (Html msg) -> Html msg
+htmlElement =
     Html.node "agent-signin"
 
 
@@ -324,7 +334,7 @@ onAgentKeys eventListener =
             (D.field "detail"
                 (D.map2 Tuple.pair
                     (D.index 0 D.string)
-                    (D.index 0 D.string)
+                    (D.index 1 D.string)
                 )
             )
         )

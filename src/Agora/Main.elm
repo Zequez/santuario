@@ -204,12 +204,7 @@ view model =
 
               else
                 div [] []
-            , Agent.element
-                [ Agent.kintoKeys EnvConstants.kintoHost
-                , Agent.onAgentKeys Authenticated
-                , Agent.onLogout LoggedOut
-                ]
-                []
+            , Agent.element EnvConstants.kintoHost Authenticated LoggedOut
             ]
         , case maybeMarketShops of
             Just marketShops ->

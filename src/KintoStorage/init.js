@@ -1,5 +1,7 @@
 import Elm from "./Main.elm";
-// import Kinto from "kinto";
+import registerAgentSignIn from "../Agent/SignIn.Element";
+
+registerAgentSignIn();
 
 import ElmDebugger from "elm-debug-transformer";
 ElmDebugger.register();
