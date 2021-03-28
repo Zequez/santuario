@@ -10,6 +10,7 @@ import Html.Events exposing (on, onClick, onInput)
 import Json.Decode as D
 import Json.Encode as E
 import Kinto
+import Ui.Ui as Ui
 import Utils.Utils exposing (classFocusRing, classInput, iif)
 
 
@@ -208,10 +209,9 @@ view params state =
 
         Authenticated ->
             div []
-                [ text "Successfully authenticated!"
-                , button
-                    [ class "uppercase ml-4 px-4 py-2 font-semibold bg-green-500 rounded-md text-white"
-                    , onClick RequestLogout
+                [ Ui.primaryButton
+                    [ onClick RequestLogout
+                    , class "w-full"
                     ]
                     [ text "Logout" ]
                 ]
@@ -221,8 +221,8 @@ view params state =
                 disableInputs =
                     disabled (state.signInStatus == Submitting)
             in
-            div [ class "container mx-auto max-w-md" ]
-                [ div [ class "text-2xl mb-4 tracking-wide" ] [ text "Sign in" ]
+            div [ class "" ]
+                [ div [ class "text-2xl mb-4 tracking-wide text-center" ] [ text "Sign in" ]
                 , input
                     [ value state.user
                     , onInput WriteUser

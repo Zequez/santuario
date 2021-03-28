@@ -7,8 +7,8 @@ import Html.Events exposing (on, onClick, onInput)
 
 mainSidebarView : String -> List (Attribute msg) -> List (Html msg) -> Html msg
 mainSidebarView title attributes children =
-    div (class "w-32 bg-gray-100 shadow-md" :: attributes)
-        (a [ class "flex h-12 items-center bg-green-500  text-white hover:bg-green-400", href "/" ]
+    div (class "w-32 flex-shrink-0 bg-gray-100 shadow-md flex flex-col" :: attributes)
+        (a [ class "flex h-12 items-center bg-green-500 bg-opacity-75 hover:bg-opacity-100 text-white", href "/" ]
             [ div [ class "text-2xl mx-4" ] [ text "❮" ]
             , div [ class "text-xl" ] [ text title ]
             ]
@@ -24,7 +24,7 @@ primaryButton attributes children =
           hover:ring-4 hover:ring-opacity-25
           focus:ring-4 focus:ring-opacity-50 focus:outline-none
           active:ring-opacity-75
-          text-white text-lg font-semibold tracking-wide uppercase
+          text-white text-base font-semibold tracking-wide uppercase
           py-2 px-4 rounded-md
           disabled:opacity-50"""
             :: attributes

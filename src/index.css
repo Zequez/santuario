@@ -74,3 +74,21 @@
 .animation-slower {
   animation-duration: 2.5s;
 }
+
+@keyframes animate-fade-slide-in {
+  from {
+    transform: translate(-1rem, 1rem);
+    opacity: 0;
+  }
+
+  to {
+    transform: translate(0rem, 0rem);
+    opacity: 1;
+  }
+}
+
+.animate-fade-slide-in {
+  animation-duration: 0.25s;
+  animation-name: animate-fade-slide-in;
+  /* animation-timing-function: linear; */
+}

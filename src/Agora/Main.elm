@@ -27,11 +27,20 @@ import Utils.Utils exposing (classFocusRing, classInput, dictFromRecordLike, iif
 type alias Model =
     { user : String
     , auth : Maybe Kinto.Auth
+    , accountPopupVisible : Bool
     , markets : Dict String Market
     , shops : Dict String Shop
     , selectedMarket : Maybe String
     , selectedShop : Maybe String
     }
+
+
+
+-- type alias PlayerInfo =
+--     { name : String
+--     , email : String
+--     , picture : String
+--     }
 
 
 empty =
@@ -42,6 +51,7 @@ init : ( Model, Cmd Msg )
 init =
     ( Model ""
         Nothing
+        False
         (dictFromRecordLike [ market1, market2, market3, market4 ])
         (dictFromRecordLike [ shop1, shop2, shop3, shop4, shop5, shop6, shop7, shop8 ])
         (Just "vegan")
@@ -120,6 +130,7 @@ type Msg
     | SelectMarket String
     | SelectShop String
     | Authenticated ( String, String )
+    | ToggleAccountPopup
     | LoggedOut
 
 
@@ -151,6 +162,9 @@ update msg model =
 
         LoggedOut ->
             ( { model | user = "", auth = Nothing }, Cmd.none )
+
+        ToggleAccountPopup ->
+            ( { model | accountPopupVisible = not model.accountPopupVisible }, Cmd.none )
 
         _ ->
             model
@@ -195,18 +209,21 @@ view model =
                     )
     in
     div [ class "bg-gray-200 min-h-full flex" ]
-        [ Ui.mainSidebarView "Agora" [] [ marketListView markets (Maybe.withDefault "" model.selectedMarket) ]
+        [ Ui.mainSidebarView "Agora"
+            []
+            [ marketListView markets (Maybe.withDefault "" model.selectedMarket)
+            , userAccountButtonView model.user model.accountPopupVisible
+            ]
         , div [ class "flex-grow py-8 px-12" ]
             [ if model.user /= "" then
                 div [] [ text ("Woo! Welcome " ++ model.user) ]
 
               else
                 div [] []
-            , Agent.element EnvConstants.kintoHost Authenticated LoggedOut
             ]
         , case maybeMarketShops of
             Just marketShops ->
-                div [ class "w-60 bg-gray-100 shadow-md" ]
+                div [ class "w-60 flex-shrink-0 bg-gray-100 shadow-md" ]
                     [ shopsListView marketShops (Maybe.withDefault "" model.selectedShop)
                     ]
 
@@ -215,11 +232,51 @@ view model =
         ]
 
 
-marketById : String -> List Market -> Maybe Market
-marketById id markets =
-    markets
-        |> List.filter (\m -> m.id == id)
-        |> List.head
+userAccountButtonView : String -> Bool -> Html Msg
+userAccountButtonView userName popupVisible =
+    div [ class "relative" ]
+        [ div [ class """
+        flex flex-col items-center justify-center
+        py-2
+        bg-yellow-500 text-white bg-opacity-75 hover:bg-opacity-100
+        cursor-pointer""", onClick ToggleAccountPopup ]
+            [ div [ class "h-6 w-6 mb-1" ] [ Icon.viewIcon Icon.user ]
+            , div [ class "font-semibold" ]
+                [ text
+                    (if userName == "" then
+                        "..."
+
+                     else
+                        userName
+                    )
+                ]
+            ]
+        , div []
+            [ div [ class "fixed inset-0 z-20", classList [ ( "hidden", not popupVisible ) ], onClick ToggleAccountPopup ] []
+            , div
+                [ class """
+                        absolute bottom-0 left-0 w-80 ml-4 mb-4 z-30
+                         shadow-lg rounded-lg animate-fade-slide-in bg-white """
+                , classList [ ( "hidden", not popupVisible ) ]
+                ]
+                [ div [ class "flex flex-col" ]
+                    [ div [ class "h-20 rounded-t-lg bg-yellow-200" ]
+                        [ div [ class "flex flex-col mx-auto w-20 text-center" ]
+                            [ div [ class "bg-white rounded-full h-20 w-20 p-1 shadow-sm mt-6" ]
+                                [ div [ class "w-full h-full bg-gray-100 rounded-full text-gray-500 flex items-center justify-center" ]
+                                    [ div [ class "h-10 w-10 -mt-2" ] [ Icon.viewIcon Icon.user ]
+                                    ]
+                                ]
+                            , div [ class "text-xl font-semibold" ] [ text userName ]
+                            ]
+                        ]
+                    , div [ class "p-4 pt-12 ", classList [ ( "pt-16", userName /= "" ) ] ]
+                        [ Agent.element EnvConstants.kintoHost Authenticated LoggedOut
+                        ]
+                    ]
+                ]
+            ]
+        ]
 
 
 shopsListView : List Shop -> String -> Html Msg
@@ -244,11 +301,6 @@ shopListButtonView shop isSelected =
             [ ( "text-gray-600", not isSelected )
             , ( "bg-green-500 text-white bg-opacity-100 font-semibold shadow-md -translate-x-4", isSelected )
             ]
-
-        -- , if isSelected then
-        --     style "transform" "translateX(-0.5rem)"
-        --   else
-        --     style "" ""
         , onClick (SelectShop shop.id)
         ]
         [ span [ class "mr-2" ] [ text shop.icon ]
@@ -258,7 +310,7 @@ shopListButtonView shop isSelected =
 
 marketListView : List Market -> String -> Html Msg
 marketListView markets selectedMarket =
-    div [ class "flex flex-col" ]
+    div [ class "flex flex-col flex-grow" ]
         (markets
             |> List.map (\m -> marketListButtonView m (m.id == selectedMarket))
         )
