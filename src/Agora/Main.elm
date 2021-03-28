@@ -209,12 +209,8 @@ view model =
                     )
     in
     div [ class "bg-gray-200 min-h-full flex" ]
-        [ Ui.mainSidebarView "Agora"
-            []
-            [ marketListView markets (Maybe.withDefault "" model.selectedMarket)
-            , userAccountButtonView model.user model.accountPopupVisible
-            ]
-        , div [ class "flex-grow py-8 px-12" ]
+        [ mainSidebarView model markets
+        , div [ class "p-12 flex-grow" ]
             [ if model.user /= "" then
                 div [] [ text ("Woo! Welcome " ++ model.user) ]
 
@@ -223,25 +219,31 @@ view model =
             ]
         , case maybeMarketShops of
             Just marketShops ->
-                div [ class "w-60 flex-shrink-0 bg-gray-100 shadow-md" ]
-                    [ shopsListView marketShops (Maybe.withDefault "" model.selectedShop)
-                    ]
+                shopsListSidebarView marketShops model.selectedShop
 
             Nothing ->
                 div [] []
         ]
 
 
+mainSidebarView : Model -> List Market -> Html Msg
+mainSidebarView model markets =
+    Ui.mainSidebarView "Agora"
+        [ class "" ]
+        [ marketListView markets (Maybe.withDefault "" model.selectedMarket)
+        , userAccountButtonView model.user model.accountPopupVisible
+        ]
+
+
 userAccountButtonView : String -> Bool -> Html Msg
 userAccountButtonView userName popupVisible =
-    div [ class "relative" ]
+    div [ class "flex-shrink-0" ]
         [ div [ class """
-        flex flex-col items-center justify-center
-        py-2
-        bg-yellow-500 text-white bg-opacity-75 hover:bg-opacity-100
-        cursor-pointer""", onClick ToggleAccountPopup ]
-            [ div [ class "h-6 w-6 mb-1" ] [ Icon.viewIcon Icon.user ]
-            , div [ class "font-semibold" ]
+            flex flex-col h-12 items-center justify-center
+            bg-yellow-500 text-white bg-opacity-75 hover:bg-opacity-100
+            cursor-pointer""", onClick ToggleAccountPopup ]
+            [ div [ class "h-4 w-4 mb-1" ] [ Icon.viewIcon Icon.user ]
+            , div [ class "text-sm font-semibold" ]
                 [ text
                     (if userName == "" then
                         "..."
@@ -279,9 +281,16 @@ userAccountButtonView userName popupVisible =
         ]
 
 
+shopsListSidebarView : List Shop -> Maybe String -> Html Msg
+shopsListSidebarView shops selectedShop =
+    div [ class "flex-shrink-0 w-60 bg-gray-100 shadow-md" ]
+        [ shopsListView shops (Maybe.withDefault "" selectedShop)
+        ]
+
+
 shopsListView : List Shop -> String -> Html Msg
 shopsListView shops selectedShop =
-    div [ class "flex flex-col p-2" ]
+    div [ class "flex flex-col p-2 h-full" ]
         (shops
             |> List.map (\s -> shopListButtonView s (s.id == selectedShop))
         )
