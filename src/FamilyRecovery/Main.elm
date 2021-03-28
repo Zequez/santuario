@@ -20,7 +20,6 @@ import Dict exposing (Dict)
 import FamilyRecovery.Animal as Animal
 import FamilyRecovery.Card as Card
 import FamilyRecovery.Human as Human
-import FamilyRecovery.Mapbox as Mapbox
 import FamilyRecovery.Modal as Modal
 import FamilyRecovery.Player as Player
 import FamilyRecovery.Report as Report
@@ -35,6 +34,7 @@ import FontAwesome.Styles
 import Html exposing (Html, a, br, button, div, h2, hr, img, input, option, p, select, span, text)
 import Html.Attributes exposing (class, classList, href, placeholder, src, style, target, title, value)
 import Html.Events exposing (onClick, onInput)
+import MapboxElement.Mapbox as Mapbox
 import Regex
 import Round
 import Task

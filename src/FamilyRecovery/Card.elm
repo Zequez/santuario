@@ -1,8 +1,8 @@
 module FamilyRecovery.Card exposing (..)
 
-import FamilyRecovery.Mapbox as Mapbox
 import Html exposing (Html, div, span, text)
 import Html.Attributes exposing (class)
+import MapboxElement.Mapbox as Mapbox
 
 
 view : String -> Html msg -> Html msg

@@ -1,5 +1,5 @@
 import Elm from "./Main.elm";
-import MapboxElement from "./MapboxElement";
+import MapboxElement from "../MapboxElement/MapboxElement";
 
 import ElmDebugger from "elm-debug-transformer";
 ElmDebugger.register();

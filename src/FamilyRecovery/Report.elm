@@ -4,10 +4,10 @@ import Date exposing (Date)
 import FamilyRecovery.Animal as Animal
 import FamilyRecovery.Card as Card
 import FamilyRecovery.Human as Human
-import FamilyRecovery.Mapbox as Mapbox
 import FamilyRecovery.Utils as Utils
 import Html exposing (Html, a, div, img, input, span, text)
 import Html.Attributes exposing (class, href, placeholder, src, target, value)
+import MapboxElement.Mapbox as Mapbox
 import Time
 
 

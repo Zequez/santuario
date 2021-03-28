@@ -1,4 +1,4 @@
-module FamilyRecovery.Mapbox exposing (..)
+module MapboxElement.Mapbox exposing (..)
 
 import Html exposing (Html, div, node)
 import Html.Attributes exposing (attribute, class, style)
