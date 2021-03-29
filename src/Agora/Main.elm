@@ -2,7 +2,7 @@ module Agora.Main exposing (..)
 
 import Agent.SignIn as Agent
 import Browser
-import Communities.Communities as Communities exposing (Community, IPFSAddress, communities)
+import Communities.Communities as Communities exposing (Community, communities)
 import Dict exposing (Dict)
 import EnvConstants
 import FontAwesome.Icon as Icon
@@ -13,7 +13,7 @@ import Html.Events exposing (onClick, onInput)
 import Json.Decode as JD
 import Kinto
 import Ui.Ui as Ui
-import Utils.Utils exposing (classFocusRing, classInput, dictFromRecordLike, iif)
+import Utils.Utils as Utils exposing (IPFSAddress, classFocusRing, classInput, dictFromRecordLike, iif, ipfsUrl)
 
 
 
@@ -266,17 +266,12 @@ mainSidebarView model markets =
         ]
 
 
-ipfsUrl : IPFSAddress -> String
-ipfsUrl (Communities.IPFSAddress hash) =
-    "https://gateway.pinata.cloud/ipfs/" ++ hash
-
-
 userAccountButtonView : String -> Bool -> Html Msg
 userAccountButtonView userName popupVisible =
-    div [ class "flex-shrink-0" ]
+    div [ class "flex-shrink-0 bg-white" ]
         [ div [ class """
             h-full flex flex-col w-32 items-center justify-center
-            bg-yellow-500 text-white bg-opacity-75 hover:bg-opacity-100
+            bg-yellow-500 text-white hover:bg-yellow-400
             cursor-pointer""", onClick ToggleAccountPopup ]
             [ div [ class "h-4 w-4 mb-1" ] [ Icon.viewIcon Icon.user ]
             , div [ class "text-sm font-semibold" ]

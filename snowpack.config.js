@@ -51,6 +51,7 @@ module.exports = {
     "Main.elm",
     "MetaCards.elm",
     "MetaCards2.elm",
+    "SignIn.elm",
   ]),
   routes: [],
   mount: {

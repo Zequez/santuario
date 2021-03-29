@@ -49,3 +49,12 @@ dictFromRecordLike records =
     records
         |> List.map (\r -> ( r.id, r ))
         |> Dict.fromList
+
+
+type IPFSAddress
+    = IPFSAddress String
+
+
+ipfsUrl : IPFSAddress -> String
+ipfsUrl (IPFSAddress hash) =
+    "https://gateway.pinata.cloud/ipfs/" ++ hash

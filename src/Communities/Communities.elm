@@ -8,9 +8,7 @@ module Communities.Communities exposing (..)
 -- We can even use this information to automatically deploy a community-scoped Santuario to
 -- specific domain names, which would not be possible if storing it on a DB
 
-
-type IPFSAddress
-    = IPFSAddress String
+import Utils.Utils as Utils exposing (IPFSAddress)
 
 
 type alias Community =
@@ -36,8 +34,8 @@ communities =
       , language = "es"
       , host = "santuario.zequez.space"
       , emoji = "🦆"
-      , banner = IPFSAddress "QmPdYGLiUsr6waTtsxV4B57y3mfjFSNcnrytgVNHrVMpRC"
-      , logo = IPFSAddress "QmQsiFfPhbnzq16D7VQerxi5pvURdmmCV6nkUR511emttp"
+      , banner = Utils.IPFSAddress "QmPdYGLiUsr6waTtsxV4B57y3mfjFSNcnrytgVNHrVMpRC"
+      , logo = Utils.IPFSAddress "QmQsiFfPhbnzq16D7VQerxi5pvURdmmCV6nkUR511emttp"
       , coordinators = [ "Zequez" ]
       , location =
             [ ( -57.6424627, -37.9811701 )

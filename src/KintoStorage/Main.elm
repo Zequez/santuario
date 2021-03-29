@@ -205,18 +205,18 @@ update msg model =
                         auth =
                             Kinto.Basic user pass
 
-                        _ =
-                            Debug.log "Authenticated yeah!" (user ++ ":" ++ pass)
+                        -- _ =
+                        --     Debug.log "Authenticated yeah!" (user ++ ":" ++ pass)
                     in
                     ( { model | user = user, auth = Just auth, needsLoadingStatus = Loading }
                     , getNeedsList (client auth)
                     )
 
                 _ ->
-                    let
-                        _ =
-                            Debug.log "Not authentiated cat't do that" msg
-                    in
+                    -- let
+                    --     _ =
+                    --         Debug.log "Not authentiated cat't do that" msg
+                    -- in
                     ( model, Cmd.none )
 
         Just auth ->
