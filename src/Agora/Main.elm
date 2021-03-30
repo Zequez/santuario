@@ -8,11 +8,13 @@ import EnvConstants
 import FontAwesome.Icon as Icon
 import FontAwesome.Solid as Icon
 import Html exposing (Attribute, Html, a, button, code, div, img, input, span, text)
-import Html.Attributes exposing (class, classList, disabled, href, placeholder, src, style, type_, value)
+import Html.Attributes exposing (class, classList, disabled, href, placeholder, src, style, target, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Json.Decode as JD
 import Kinto
+import List.Extra
 import Ui.Ui as Ui
+import Utils.ContactChannel as ContactChannel
 import Utils.Utils as Utils exposing (IPFSAddress, classFocusRing, classInput, dictFromRecordLike, iif, ipfsUrl)
 
 
@@ -55,7 +57,7 @@ init =
         Nothing
         False
         (dictFromRecordLike [ market1, market2, market3, market4 ])
-        (dictFromRecordLike [ shop1, shop2, shop3, shop4, shop5, shop6, shop7, shop8 ])
+        (dictFromRecordLike [ shop1, shop2, shop3, shop4, shop5, shop6, shop7, shop8, shop9 ])
         (Just "vegan")
         Nothing
         (List.head communities)
@@ -78,20 +80,37 @@ type alias Shop =
     { id : String
     , name : String
     , icon : String
-    , contact : String
+    , logo : IPFSAddress
+    , contact : List ContactChannel.ContactChannel
     , admin : String
     , team : List String
     , products : List Product
     , locations : List PhysicalLocation
+    , marketDisplay : ProductsListDisplay
     }
+
+
+
+-- type alias TeamMember =
+--     { name : String
+--     , avatar : String
+--     }
 
 
 type alias Product =
     { name : String
-    , images : List String
+    , images : List IPFSAddress
     , description : String
     , pricingModel : PricingModel
     }
+
+
+type PricingModel
+    = FixedPrice Int
+    | SuggestedPrice Int
+    | Gift
+    | Consult
+    | Custom String
 
 
 
@@ -106,14 +125,6 @@ type alias PhysicalLocation =
     , details : String
     , availability : String
     }
-
-
-type PricingModel
-    = FixedPrice Int
-    | SuggestedPrice Int
-    | Gift
-    | Consult
-    | Custom String
 
 
 
@@ -214,22 +225,249 @@ view model =
     div [ class "flex flex-col h-full" ]
         [ topBarView model
         , div [ class "bg-gray-200 flex-grow flex" ]
-            [ mainSidebarView model markets
-            , div [ class "p-12 flex-grow" ]
-                [ if model.user /= "" then
-                    div [] [ text ("Woo! Welcome " ++ model.user) ]
+            (mainSidebarView model markets
+                :: (case maybeMarketShops of
+                        Just marketShops ->
+                            [ div [ class "px-4 py-8 sm:p-12 flex-grow" ] [ marketShopsView marketShops ]
+                            , shopsListSidebarView marketShops model.selectedShop
+                            ]
 
-                  else
-                    div [] []
-                ]
-            , case maybeMarketShops of
-                Just marketShops ->
-                    shopsListSidebarView marketShops model.selectedShop
-
-                Nothing ->
-                    div [] []
-            ]
+                        Nothing ->
+                            [ div [] [] ]
+                   )
+            )
         ]
+
+
+marketShopsView : List Shop -> Html Msg
+marketShopsView shops =
+    div [ class "grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8" ]
+        (shops
+            |> List.map marketShopCardView
+        )
+
+
+marketShopCardView : Shop -> Html Msg
+marketShopCardView shop =
+    div [ class "bg-white shadow-lg rounded-lg flex flex-col" ]
+        [ div [ class "flex h-16" ]
+            [ div [ class "h-20 w-20  -ml-2 -mt-6 rounded-full overflow-hidden p-1 shadow-md bg-gray-100 border border-gray-200" ]
+                [ img [ src (ipfsUrl shop.logo), class "rounded-full" ] []
+                ]
+            , div [ class "p-2 font-thin text-lg" ]
+                [ div []
+                    [ text (shop.icon ++ " " ++ shop.name)
+                    , case List.head shop.locations of
+                        Just location ->
+                            div [ class "-ml-2 text-sm flex" ]
+                                [ div [ class "h-3 w-3 mr-1 text-gray-700" ] [ Icon.viewIcon Icon.mapMarkerAlt ]
+                                , text location.address
+                                ]
+
+                        Nothing ->
+                            div [] []
+                    ]
+                ]
+            ]
+        , marketShopProductsView shop.marketDisplay shop.products
+        , div [ class "h-12 rounded-b-lg flex justify-end overflow-hidden text-white font-semibold" ]
+            (shop.contact
+                |> List.map contactChannelButtonView
+            )
+        ]
+
+
+marketShopProductsView : ProductsListDisplay -> List Product -> Html Msg
+marketShopProductsView display products =
+    goldenRatioElementView [ class "bg-gray-100 shadow-top overflow-auto" ]
+        (if List.isEmpty products then
+            [ div [ class "h-full w-full flex items-center justify-center text-gray-400" ]
+                [ text "Sin lista de productos"
+                ]
+            ]
+
+         else
+            [ case display of
+                SmallSquare ->
+                    div [] []
+
+                BigSquare ->
+                    div [ class "p-2 grid grid-cols-2 gap-2 flex-grow" ]
+                        (products
+                            |> List.map
+                                (\p ->
+                                    div [ class "flex flex-col" ]
+                                        [ squareImageWithDefault p.images
+                                        , div [ class "text-base font-thin" ] [ text p.name ]
+                                        ]
+                                )
+                        )
+
+                BigList ->
+                    div [] []
+
+                CompactList ->
+                    div [ class "p-2 grid grid-cols-1 gap-2" ]
+                        (products
+                            |> List.map
+                                (\p ->
+                                    a [ href "/product", class "flex items-center" ]
+                                        [ div [ class "h-8 w-8 mr-2" ] [ squareImageWithDefault p.images ]
+                                        , div [ class "flex-grow text-sm" ] [ text p.name ]
+                                        , div [ class "text-gray-400" ] [ text (pricingModelToString p.pricingModel) ]
+                                        ]
+                                )
+                        )
+            ]
+        )
+
+
+type ProductsListDisplay
+    = SmallSquare
+    | BigSquare
+    | BigList
+    | CompactList
+
+
+squareImageWithDefault : List IPFSAddress -> Html Msg
+squareImageWithDefault imagesList =
+    squareElementView [ class "overflow-hidden rounded-md bg-gray-200" ]
+        [ case List.head imagesList of
+            Just firstImage ->
+                img [ class "object-cover ", src (ipfsUrl firstImage) ] []
+
+            Nothing ->
+                div [ class "h-full w-full text-gray-300 p-2" ]
+                    [ Icon.viewIcon Icon.image
+                    ]
+        ]
+
+
+
+-- productsListItemView : ProductsListItem -> Html Msg
+-- productsListItemView productsListItem =
+--     case productsListItem of
+--         ProductWithImage product ipfsHash ->
+--             a [ href "/product", class "relative" ]
+--                 [ squareElementView [ class "overflow-hidden rounded-md" ]
+--                     [ img [ class "object-cover ", src (ipfsUrl ipfsHash) ] []
+--                     ]
+--                 , div [ class "flex justify-end mt-1" ]
+--                     [ div [ class "bg-white text-sm text-gray-700 flex-grow whitespace-nowrap overflow-hidden overflow-ellipsis" ]
+--                         [ text product.name
+--                         ]
+--                     , div [ class "text-xs flex ring-1 ring-gray-200 items-center px-1 bg-white rounded-sm text-gray-400" ] [ text (pricingModelToString product.pricingModel) ]
+--                     ]
+--                 ]
+--         ProductWithoutImage product ->
+--             a [ href "/product" ]
+--                 [ squareElementView []
+--                     [ div [ class "h-full bg-gray-200 p-4 text-gray-600 rounded-md" ]
+--                         [ Icon.viewIcon Icon.image
+--                         ]
+--                     ]
+--                 , div [] [ text product.name ]
+--                 ]
+--         EmptyItem ->
+--             div []
+--                 [ squareElementView []
+--                     [ div [ class "h-full border-4 border-gray-300 border-dashed p-4 text-gray-600 rounded-md opacity-25" ]
+--                         []
+--                     ]
+--                 ]
+--         MoreItems more ->
+--             a [ href "/shop" ]
+--                 [ squareElementView []
+--                     [ div [ class "h-full bg-gray-200 p-4 text-gray-600 flex items-center justify-center font-bold text-3xl rounded-md" ]
+--                         [ text ("+" ++ String.fromInt more)
+--                         ]
+--                     ]
+--                 ]
+
+
+squareElementView : List (Attribute Msg) -> List (Html Msg) -> Html Msg
+squareElementView attributes children =
+    div ([ style "padding-top" "100%", class "relative w-full" ] ++ attributes)
+        [ div [ class "absolute inset-0" ] children
+        ]
+
+
+goldenRatioElementView : List (Attribute Msg) -> List (Html Msg) -> Html Msg
+goldenRatioElementView attributes children =
+    div ([ style "padding-top" "62%", class "relative w-full" ] ++ attributes)
+        [ div [ class "absolute inset-0" ] children
+        ]
+
+
+type ProductsListItem
+    = ProductWithImage Product IPFSAddress
+    | ProductWithoutImage Product
+    | EmptyItem
+    | MoreItems Int
+
+
+
+-- productsToProductsListItem : List Product -> Int -> List ProductsListItem
+-- productsToProductsListItem products listLength =
+--     let
+--         -- productsIndex =
+--         --     Dict.fromList (List.indexedMap Tuple.pair products)
+--         ( firstProducts, lastProducts ) =
+--             products
+--                 |> List.map
+--                     (\p ->
+--                         case List.head p.images of
+--                             Just hash ->
+--                                 ProductWithImage p hash
+--                             Nothing ->
+--                                 ProductWithoutImage p
+--                     )
+--                 |> List.indexedMap Tuple.pair
+--                 |> List.partition
+--                     (\( i, p ) ->
+--                         i < listLength
+--                     )
+--                 |> Tuple.mapBoth unIndex unIndex
+--     in
+--     case List.length lastProducts of
+--         0 ->
+--             if List.length firstProducts < listLength then
+--                 firstProducts ++ List.repeat (listLength - List.length firstProducts) EmptyItem
+--             else
+--                 firstProducts
+--         num ->
+--             MoreItems (num + 1)
+--                 :: (firstProducts
+--                         |> List.reverse
+--                         |> List.tail
+--                         |> Maybe.withDefault []
+--                     -- NEVER
+--                    )
+--                 |> List.reverse
+-- unIndex : List ( a, b ) -> List b
+-- unIndex list =
+--     List.map (\( i, p ) -> p) list
+
+
+contactChannelButtonView : ContactChannel.ContactChannel -> Html Msg
+contactChannelButtonView contactChannel =
+    a
+        [ class "flex items-center justify-center px-4 text-sm saturate-hover text-white text-opacity-75 hover:text-opacity-100"
+        , style "background-color" (ContactChannel.toColor contactChannel)
+        , href (ContactChannel.toUrl contactChannel)
+        , target "_blank"
+        ]
+        [ div [ class "w-6" ] [ Icon.viewIcon (ContactChannel.toIcon contactChannel) ] ]
+
+
+pricingModelToString : PricingModel -> String
+pricingModelToString pricingModel =
+    case pricingModel of
+        Custom price ->
+            price
+
+        _ ->
+            "N/A"
 
 
 topBarView : Model -> Html Msg
@@ -248,17 +486,19 @@ topBarView model =
 mainSidebarView : Model -> List Market -> Html Msg
 mainSidebarView model markets =
     div
-        [ class "flex flex-shrink-0 flex-col bg-gray-100 shadow-md w-32" ]
+        [ class "flex flex-shrink-0 flex-col bg-gray-100 shadow-md w-16 sm:w-32" ]
         [ marketListView markets (Maybe.withDefault "" model.selectedMarket)
         , case model.community of
             Just community ->
                 div
-                    [ class "text-gray-100 hover:bg-gray-200 font-semibold flex flex-col items-center justify-center py-2 cursor-pointer"
+                    [ class "text-gray-100 hover:bg-gray-200 font-semibold flex flex-col items-center justify-center pt-2 sm:py-2 cursor-pointer"
 
                     -- , style "background-image" ("url(" ++ ipfsUrl community.banner ++ ")")
                     ]
-                    [ div [ class "h-24 w-24 p-1 bg-gray-200 border border-gray-300 rounded-full shadow-sm" ] [ img [ class "rounded-full", src (ipfsUrl community.logo) ] [] ]
-                    , div [ class "bg-black bg-opacity-50 px-2 rounded-md -mt-6" ] [ text "Mar del Plata" ]
+                    [ div [ class "h-16 w-16 sm:h-24 sm:w-24 p-1 bg-gray-200 border border-gray-300 rounded-full shadow-sm" ]
+                        [ img [ class "rounded-full", src (ipfsUrl community.logo) ] []
+                        ]
+                    , div [ class "text-xs sm:text-base text-center  bg-black bg-opacity-50 px-2 sm:rounded-md -mt-6" ] [ text community.name ]
                     ]
 
             Nothing ->
@@ -273,7 +513,7 @@ userAccountButtonView userName popupVisible =
             h-full flex flex-col w-32 items-center justify-center
             bg-yellow-500 text-white hover:bg-yellow-400
             cursor-pointer""", onClick ToggleAccountPopup ]
-            [ div [ class "h-4 w-4 mb-1" ] [ Icon.viewIcon Icon.user ]
+            [ div [ class "h-4 w-4 mb-1" ] [ Icon.viewIcon Icon.userCircle ]
             , div [ class "text-sm font-semibold" ]
                 [ text
                     (if userName == "" then
@@ -314,7 +554,7 @@ userAccountButtonView userName popupVisible =
 
 shopsListSidebarView : List Shop -> Maybe String -> Html Msg
 shopsListSidebarView shops selectedShop =
-    div [ class "flex-shrink-0 w-60 bg-gray-100 shadow-md" ]
+    div [ class "flex-shrink-0 w-60 bg-gray-100 shadow-md hidden md:block" ]
         [ shopsListView shops (Maybe.withDefault "" selectedShop)
         ]
 
@@ -359,14 +599,14 @@ marketListView markets selectedMarket =
 marketListButtonView : Market -> Bool -> Html Msg
 marketListButtonView market isSelected =
     div
-        [ class "flex flex-col items-center justify-center h-24 cursor-pointer font-bold hover:bg-gray-200"
+        [ class "flex flex-col items-center justify-center h-16 sm:h-24 cursor-pointer font-bold hover:bg-gray-200"
         , classList [ ( "bg-gray-200", isSelected ) ]
         , onClick (SelectMarket market.id)
         ]
-        [ div [ class "text-4xl" ]
+        [ div [ class "text-2xl sm:text-4xl" ]
             [ text market.icon
             ]
-        , div [ class "text-gray-600" ] [ text market.name ]
+        , div [ class "text-gray-600 text-xs sm:text-base" ] [ text market.name ]
         ]
 
 
@@ -418,7 +658,7 @@ market2 =
     , icon = "🌱"
     , admin = "Zequez"
     , team = []
-    , shops = [ "shop6", "shop7", "shop8" ]
+    , shops = [ "shop6", "shop7", "shop8", "shop9" ]
     }
 
 
@@ -451,11 +691,13 @@ shop1 =
     { id = "shop1"
     , name = "Dog Food Emporium"
     , icon = "🐶"
-    , contact = "+5492235235568"
+    , logo = Utils.IPFSAddress "QmfG9n6cECZTknMm1HMPrnAaNEBHyQ1mqR6hPuY73moJQV"
+    , contact = [ ContactChannel.Whatsapp "+5492235235568" ]
     , admin = "Zequez"
     , team = []
     , products = []
     , locations = []
+    , marketDisplay = CompactList
     }
 
 
@@ -464,11 +706,13 @@ shop2 =
     { id = "shop2"
     , name = "Tofu Magnificent"
     , icon = "🍜"
-    , contact = "+5492235235568"
+    , logo = Utils.IPFSAddress "QmfG9n6cECZTknMm1HMPrnAaNEBHyQ1mqR6hPuY73moJQV"
+    , contact = [ ContactChannel.Whatsapp "+5492235235568" ]
     , admin = "Zequez"
     , team = []
     , products = []
     , locations = []
+    , marketDisplay = CompactList
     }
 
 
@@ -477,11 +721,13 @@ shop3 =
     { id = "shop3"
     , name = "Hoodies & Hoods"
     , icon = "🤙"
-    , contact = "+5492235235568"
+    , logo = Utils.IPFSAddress "QmfG9n6cECZTknMm1HMPrnAaNEBHyQ1mqR6hPuY73moJQV"
+    , contact = [ ContactChannel.Whatsapp "+5492235235568" ]
     , admin = "Zequez"
     , team = []
     , products = []
     , locations = []
+    , marketDisplay = CompactList
     }
 
 
@@ -490,11 +736,13 @@ shop4 =
     { id = "shop4"
     , name = "Pizza Veg"
     , icon = "🍕"
-    , contact = "+5492235235568"
+    , logo = Utils.IPFSAddress "QmfG9n6cECZTknMm1HMPrnAaNEBHyQ1mqR6hPuY73moJQV"
+    , contact = [ ContactChannel.Whatsapp "+5492235235568" ]
     , admin = "Zequez"
     , team = []
     , products = []
     , locations = []
+    , marketDisplay = CompactList
     }
 
 
@@ -503,11 +751,13 @@ shop5 =
     { id = "shop5"
     , name = "Chocolateree"
     , icon = "🍫"
-    , contact = "+5492235235568"
+    , logo = Utils.IPFSAddress "QmfG9n6cECZTknMm1HMPrnAaNEBHyQ1mqR6hPuY73moJQV"
+    , contact = [ ContactChannel.Whatsapp "+5492235235568" ]
     , admin = "Zequez"
     , team = []
     , products = []
     , locations = []
+    , marketDisplay = CompactList
     }
 
 
@@ -516,11 +766,42 @@ shop6 =
     { id = "shop6"
     , name = "Che Verde"
     , icon = "🥦"
-    , contact = "+5492235235568"
+    , logo = Utils.IPFSAddress "QmdjaRpTQwHsipEa7tkatNhyWJBJaPgXVyE3qvZSmSZBEa"
+    , contact = [ ContactChannel.Instagram "CheVerde", ContactChannel.Whatsapp "+5492235235568" ]
     , admin = "Zequez"
     , team = []
-    , products = []
-    , locations = []
+    , products =
+        [ { name = "Bolsón"
+          , images = [ Utils.IPFSAddress "QmbM3ZqP5icAccMKdnqXcPnNoTmkymrqhMqy8gabn5JX9t" ]
+          , description = ""
+          , pricingModel = Custom "$500"
+          }
+        , { name = "Paltas agroecológicas"
+          , images = [ Utils.IPFSAddress "QmbM3ZqP5icAccMKdnqXcPnNoTmkymrqhMqy8gabn5JX9t" ]
+          , description = ""
+          , pricingModel = Custom "$80"
+          }
+        , { name = "Ajo"
+          , images = []
+          , description = ""
+          , pricingModel = Custom "$60"
+          }
+        , { name = "Algo"
+          , images = [ Utils.IPFSAddress "QmbM3ZqP5icAccMKdnqXcPnNoTmkymrqhMqy8gabn5JX9t" ]
+          , description = ""
+          , pricingModel = Custom "$100"
+          }
+        ]
+    , locations =
+        [ { lat = -38.0551358
+          , lng = -57.5479618
+          , address = "Tucumán 3340"
+          , name = "Casa central"
+          , details = "Portón azúl"
+          , availability = "8am - 3pm"
+          }
+        ]
+    , marketDisplay = CompactList
     }
 
 
@@ -529,11 +810,13 @@ shop7 =
     { id = "shop7"
     , name = "UTT"
     , icon = "✊"
-    , contact = "+5492235235568"
+    , logo = Utils.IPFSAddress "QmfG9n6cECZTknMm1HMPrnAaNEBHyQ1mqR6hPuY73moJQV"
+    , contact = [ ContactChannel.Whatsapp "+5492235235568" ]
     , admin = "Zequez"
     , team = []
     , products = []
     , locations = []
+    , marketDisplay = CompactList
     }
 
 
@@ -542,9 +825,39 @@ shop8 =
     { id = "shop8"
     , name = "Los Serenos"
     , icon = "👩\u{200D}🌾"
-    , contact = "+5492235235568"
+    , logo = Utils.IPFSAddress "QmfG9n6cECZTknMm1HMPrnAaNEBHyQ1mqR6hPuY73moJQV"
+    , contact = [ ContactChannel.Whatsapp "+5492235235568" ]
     , admin = "Zequez"
     , team = []
-    , products = []
+    , products = List.repeat 10 repeatedProduct
     , locations = []
+    , marketDisplay = CompactList
+    }
+
+
+shop9 : Shop
+shop9 =
+    { id = "shop9"
+    , name = "Red Agroecológica"
+    , icon = "🌎"
+    , logo = Utils.IPFSAddress "QmQsiFfPhbnzq16D7VQerxi5pvURdmmCV6nkUR511emttp"
+    , contact =
+        [ ContactChannel.Whatsapp "+5492235235568"
+        , ContactChannel.Instagram "redagroecologicamdp"
+        , ContactChannel.Facebook "alacenasoberana"
+        ]
+    , admin = "Zequez"
+    , team = []
+    , products = List.repeat 10 repeatedProduct
+    , locations = []
+    , marketDisplay = CompactList
+    }
+
+
+repeatedProduct : Product
+repeatedProduct =
+    { name = "Algo"
+    , images = [ Utils.IPFSAddress "QmbM3ZqP5icAccMKdnqXcPnNoTmkymrqhMqy8gabn5JX9t" ]
+    , description = ""
+    , pricingModel = Custom "$100"
     }
