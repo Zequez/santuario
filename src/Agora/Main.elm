@@ -249,23 +249,30 @@ marketShopsView shops =
 
 marketShopCardView : Shop -> Html Msg
 marketShopCardView shop =
-    div [ class "bg-white shadow-lg rounded-lg flex flex-col" ]
+    div [ class "bg-white shadow-md rounded-lg flex flex-col" ]
         [ div [ class "flex h-16" ]
-            [ div [ class "h-20 w-20  -ml-2 -mt-6 rounded-full overflow-hidden p-1 shadow-md bg-gray-100 border border-gray-200" ]
+            [ div [ class "h-20 w-20  ml-2 -mt-6 rounded-full overflow-hidden p-1 bg-white border border-gray-200" ]
                 [ img [ src (ipfsUrl shop.logo), class "rounded-full" ] []
                 ]
-            , div [ class "p-2 font-thin text-lg" ]
+            , div [ class "p-2 font-thin text-base" ]
                 [ div []
                     [ text (shop.icon ++ " " ++ shop.name)
-                    , case List.head shop.locations of
-                        Just location ->
-                            div [ class "-ml-2 text-sm flex" ]
-                                [ div [ class "h-3 w-3 mr-1 text-gray-700" ] [ Icon.viewIcon Icon.mapMarkerAlt ]
-                                , text location.address
-                                ]
+                    , div [ class "-ml-2 text-sm flex" ]
+                        (if List.length shop.locations > 1 then
+                            [ div [ class "h-3 w-3 mr-1 text-gray-700" ] [ Icon.viewIcon Icon.mapMarkerAlt ]
+                            , text (String.fromInt (List.length shop.locations) ++ " nodos de distribución")
+                            ]
 
-                        Nothing ->
-                            div [] []
+                         else
+                            case List.head shop.locations of
+                                Just location ->
+                                    [ div [ class "h-3 w-3 mr-1 text-gray-700" ] [ Icon.viewIcon Icon.mapMarkerAlt ]
+                                    , text location.address
+                                    ]
+
+                                Nothing ->
+                                    [ div [] [] ]
+                        )
                     ]
                 ]
             ]
@@ -793,15 +800,19 @@ shop6 =
           }
         ]
     , locations =
-        [ { lat = -38.0551358
-          , lng = -57.5479618
-          , address = "Tucumán 3340"
-          , name = "Casa central"
-          , details = "Portón azúl"
-          , availability = "8am - 3pm"
-          }
+        [ fakeLocation
         ]
     , marketDisplay = CompactList
+    }
+
+
+fakeLocation =
+    { lat = -38.0551358
+    , lng = -57.5479618
+    , address = "Tucumán 3340"
+    , name = "Casa central"
+    , details = "Portón azúl"
+    , availability = "8am - 3pm"
     }
 
 
@@ -815,7 +826,7 @@ shop7 =
     , admin = "Zequez"
     , team = []
     , products = []
-    , locations = []
+    , locations = [ fakeLocation, fakeLocation, fakeLocation, fakeLocation, fakeLocation ]
     , marketDisplay = CompactList
     }
 

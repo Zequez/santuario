@@ -6,6 +6,7 @@ import Html.Attributes exposing (class, classList, disabled, href, placeholder, 
 import Html.Events exposing (keyCode, on, onClick, onInput)
 import Json.Decode as JD
 import Json.Encode as JE
+import Regex
 
 
 onEnter : msg -> Html.Attribute msg
@@ -55,6 +56,21 @@ type IPFSAddress
     = IPFSAddress String
 
 
+ipfsAddress : String -> IPFSAddress
+ipfsAddress hash =
+    IPFSAddress hash
+
+
 ipfsUrl : IPFSAddress -> String
 ipfsUrl (IPFSAddress hash) =
     "https://gateway.pinata.cloud/ipfs/" ++ hash
+
+
+cleanPhoneNumber : String -> String
+cleanPhoneNumber phone =
+    let
+        regex =
+            Maybe.withDefault Regex.never (Regex.fromString "[^0-9]")
+    in
+    phone
+        |> Regex.replace regex (\_ -> "")

@@ -21,6 +21,7 @@ module.exports = {
       opacity: ["disabled"],
       ringWidth: ["hover"],
       ringOpacity: ["hover", "active"],
+      borderRadius: ["last", "first"],
     },
   },
   plugins: [],

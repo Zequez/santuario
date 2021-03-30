@@ -92,3 +92,15 @@
   animation-name: animate-fade-slide-in;
   /* animation-timing-function: linear; */
 }
+
+.shadow-top {
+  box-shadow: inset 0px 2px 2px 0px rgb(0 0 0 / 4%);
+}
+
+.saturate-hover {
+  filter: saturate(0.75);
+}
+
+.saturate-hover:hover {
+  filter: saturate(1);
+}
