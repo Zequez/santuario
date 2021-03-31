@@ -1,4 +1,4 @@
-module MetaCards.MetaCards exposing (..)
+module MetaCards.Main exposing (..)
 
 import Browser
 import Components.BackHeader as BackHeader

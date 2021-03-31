@@ -35,20 +35,20 @@ module.exports = {
     ENV: env.NODE_ENV,
   },
   plugins: [
-    // ["@snowpack/plugin-run-script", { cmd: "eleventy", watch: "$1 --watch" }],
-    [
-      "@snowpack/plugin-babel",
-      {
-        input: [".js"],
-        transformOptions: {
-          presets: ["@babel/preset-env"],
-          plugins: [
-            ["@babel/plugin-proposal-decorators", { legacy: true }],
-            ["@babel/plugin-proposal-class-properties", { legacy: true }],
-          ],
-        },
-      },
-    ],
+    // [
+    //   "@snowpack/plugin-babel",
+    //   {
+    //     input: [".js"],
+    //     transformOptions: {
+    //       presets: [["@babel/preset-env", { useBuiltIns: "usage" }]],
+    //       plugins: [
+    //         ["@babel/plugin-proposal-decorators", { legacy: true }],
+    //         ["@babel/plugin-proposal-class-properties", { legacy: true }],
+    //         ["@babel/plugin-transform-runtime", { regenerator: true }],
+    //       ],
+    //     },
+    //   },
+    // ],
     "@snowpack/plugin-postcss",
     ["snowpack-plugin-elm", { verbose: false }],
     ["@marlonmarcello/snowpack-plugin-pug"],
