@@ -2,7 +2,6 @@ node_modules
 build
 elm-stuff
 .idea
-public/**/*.html
 .env
 src/EnvConstants.elm
 yarn-error.log

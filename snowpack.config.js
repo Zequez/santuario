@@ -21,9 +21,21 @@ function rawificateFiles(filePaths) {
 
 rawificateFiles(["node_modules/mapbox-gl/dist/mapbox-gl.css"]);
 
+// const htmlToDirectoriesSnowpackPlugin = {
+//   name: "@zequez/snowpack-plugin-html-to-directories",
+//   resolve: {
+//     input: [".html"],
+//     output: [".html"],
+//   },
+// };
+// function htmlToDirectoriesSnowpackPlugin(config, args = {}) {}
+
 module.exports = {
+  env: {
+    ENV: env.NODE_ENV,
+  },
   plugins: [
-    ["@snowpack/plugin-run-script", { cmd: "eleventy", watch: "$1 --watch" }],
+    // ["@snowpack/plugin-run-script", { cmd: "eleventy", watch: "$1 --watch" }],
     [
       "@snowpack/plugin-babel",
       {
@@ -39,6 +51,9 @@ module.exports = {
     ],
     "@snowpack/plugin-postcss",
     ["snowpack-plugin-elm", { verbose: false }],
+    ["@marlonmarcello/snowpack-plugin-pug"],
+    ["@snowpack/plugin-webpack"],
+    // ["@snowpack/plugin-optimize"],
   ],
   packageOptions: {},
   devOptions: {
@@ -52,11 +67,12 @@ module.exports = {
     "MetaCards.elm",
     "MetaCards2.elm",
     "SignIn.elm",
-  ]),
+  ]).concat(["**/_helpers/**", "routes.yml"]),
   routes: [],
   mount: {
     src: "/dist",
     public: "/",
+    routes: "/",
   },
   alias: {},
 };

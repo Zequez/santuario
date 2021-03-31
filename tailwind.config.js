@@ -6,7 +6,6 @@ module.exports = {
     "./src/**/*.js",
     "./src/**/*.ts",
     "./routes/**/*.pug",
-    "./routes/**/*.njk",
   ],
   darkMode: false, // or 'media' or 'class'
   theme: {
