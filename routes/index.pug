@@ -7,17 +7,41 @@ block params
 block content
   .flex.flex-col.bg-gray-100.min-h-full.text-gray-700
     h1.text-5xl.p-4.text-center.font-semibold Santuario
-    p.text-center.-mt-2.mb-4.italic An open ecosystem of apps for earthlings
+    p.text-center.-mt-2.mb-4.italic
+      +t("subtitle")
+
+    div.absolute.top-0.right-0.mr-1.mt-1.text-xs.text-center.overflow-hidden.flex.justify-center
+      for i18n, key in translations
+        div.bg-green-500.bg-opacity-50.text-white.px-1.uppercase.cursor-pointer.ml-1.rounded-sm(data-set-lang=key)
+          = i18n._
+
+    //- #app(data-app="Communities")
 
     main.flex-grow.container.mx-auto.max-w-lg.p-4.flex.flex-col.text-center
-      h2.mb-4.text-3xl.font-light Tools
-      +btn("/perdides", "Animales perdides y encontrades (Work in progress)")
-      +btn("/agora", "Mercado comunitario (Work in progress)")
-      h2.mb-4.text-3xl.font-light Experiments
-      +btn("/metacards", "Meta tarjetas #1")
-      +btn("/kinto-storage", "Kinto Storage backend")
+      h2.mb-4.text-3xl.font-light
+        +t("tools")
+      +btn("/perdides")
+        div
+          +t("familyRecovery")
+        div.opacity-75.text-sm
+          +t("familyRecoveryDescription")
+      +btn("/agora")
+        div
+          +t("agora")
+        div.opacity-75.text-sm
+          +t("agoraDescription")
+      h2.mb-4.text-3xl.font-light
+        +t("experiments")
+      +btn("/metacards")
+        +t("experimentsMetaCards")
+      +btn("/kinto-storage")
+        +t("experimentsKintoStorage")
       //- +btn("/metacards2", "Meta tarjetas #2")
-      h2.mb-4.text-3xl.font-light Proyect Info
-      +btn("/mission", "Mission")
-      +btn("https://github.com/Zequez/santuario", "Source code on Github", "_blank")
-      +btn("https://www.notion.so/Santuario-dddb4aa02d4b479d9f6b95cebb2a464f", "Planification platform", "_blank")
+      h2.mb-4.text-3xl.font-light
+        +t("projectInfo")
+      +btn("/mission")
+        +t('mission')
+      +btn("https://github.com/Zequez/santuario", "_blank")
+        +t("sourceCodeOnGithub")
+      +btn("https://www.notion.so/Santuario-dddb4aa02d4b479d9f6b95cebb2a464f", "_blank")
+        +t("planificationPlatform")

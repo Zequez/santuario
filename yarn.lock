@@ -946,6 +946,14 @@
     mkdirp "^1.0.4"
     rimraf "^3.0.2"
 
+"@rollup/pluginutils@^4.1.0":
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/@rollup/pluginutils/-/pluginutils-4.1.0.tgz#0dcc61c780e39257554feb7f77207dceca13c838"
+  integrity sha512-TrBhfJkFxA+ER+ew2U2/fHbebhLT/l/2pRk0hfj9KusXUuRXd2v0R58AfaZK9VXDQ4TogOSEmICVrQAA3zFnHQ==
+  dependencies:
+    estree-walker "^2.0.1"
+    picomatch "^2.2.2"
+
 "@snowpack/plugin-postcss@^1.2.1":
   version "1.2.1"
   resolved "https://registry.yarnpkg.com/@snowpack/plugin-postcss/-/plugin-postcss-1.2.1.tgz#51d1c2299f76a2a68d99bba23ac8f5623309231b"
@@ -1323,6 +1331,11 @@ argparse@^1.0.7:
   integrity sha512-o5Roy6tNG4SL/FOkCAN6RzjiakZS25RLYFrcMttJqbdd8BWrnA+fGz57iN5Pb06pvBGvl5gQ0B48dJlslXvoTg==
   dependencies:
     sprintf-js "~1.0.2"
+
+argparse@^2.0.1:
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/argparse/-/argparse-2.0.1.tgz#246f50f3ca78a3240f6c997e8a9bd1eac49e4b38"
+  integrity sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==
 
 arr-diff@^4.0.0:
   version "4.0.0"
@@ -2812,6 +2825,11 @@ estraverse@^5.2.0:
   resolved "https://registry.yarnpkg.com/estraverse/-/estraverse-5.2.0.tgz#307df42547e6cc7324d3cf03c155d5cdb8c53880"
   integrity sha512-BxbNGGNm0RyRYvUdHpIwv9IWzeM9XClbOxwoATuFdOE7ZE6wHL+HQ5T8hoPM+zHvmKzzsEqhgy0GrQ5X13afiQ==
 
+estree-walker@^2.0.1:
+  version "2.0.2"
+  resolved "https://registry.yarnpkg.com/estree-walker/-/estree-walker-2.0.2.tgz#52f010178c2a4c117a7757cfe942adb7d2da4cac"
+  integrity sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w==
+
 esutils@^2.0.2:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/esutils/-/esutils-2.0.3.tgz#74d2eb4de0b8da1293711910d50775b9b710ef64"
@@ -3805,6 +3823,13 @@ js-yaml@^3.13.1:
   dependencies:
     argparse "^1.0.7"
     esprima "^4.0.0"
+
+js-yaml@^4.0.0:
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/js-yaml/-/js-yaml-4.0.0.tgz#f426bc0ff4b4051926cd588c71113183409a121f"
+  integrity sha512-pqon0s+4ScYUvX30wxQi3PogGFAlUyH0awepWvwkj4jD4v+ova3RiYw8bmA6x2rDrEaj8i/oWKoRxpVNW+Re8Q==
+  dependencies:
+    argparse "^2.0.1"
 
 jsbn@~0.1.0:
   version "0.1.1"
@@ -6039,6 +6064,14 @@ snowpack-plugin-raw-file-loader@^1.0.9:
   version "1.0.9"
   resolved "https://registry.yarnpkg.com/snowpack-plugin-raw-file-loader/-/snowpack-plugin-raw-file-loader-1.0.9.tgz#072d4c203fd8bc9bece74ef1db7256a1e5b1fc15"
   integrity sha512-GY7MuommuHfUo7ZfPu/yeyZ7oY7vybTcIc/1JBkg3IwLDNKckprIuhPp8XAvO3gZdCTucDIw6iL2dVEId3GhJw==
+
+snowpack-plugin-yaml@^1.0.4:
+  version "1.0.4"
+  resolved "https://registry.yarnpkg.com/snowpack-plugin-yaml/-/snowpack-plugin-yaml-1.0.4.tgz#05952f5f716502232fe4a9bd7b6f7fd81dee9b6f"
+  integrity sha512-a8ygHlaT6FMwtEPeimnThiqjzOna+6rDX5KECXucOeYEVK3DR9nYlAIOlDv0Lfkwe/gkhTTOd7M3giOOOJjIYg==
+  dependencies:
+    "@rollup/pluginutils" "^4.1.0"
+    js-yaml "^4.0.0"
 
 snowpack@^3.1.2:
   version "3.1.2"

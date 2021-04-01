@@ -9,8 +9,14 @@ mixin middleBar(text)
   h1.leaves-pattern.h-12.font-special.font-bold.text-white.flex.items-center.justify-center.text-2xl.text-shadow-sm
     = text
 
-mixin btn(href, text, target = "")
-  a.px-4.py-2.mb-4.w-full.bg-green-500.bg-opacity-75.text-white.text-center.rounded-md(href=href, target=target)= text
+mixin btn(href, target = "")
+  a.px-4.py-2.mb-4.w-full.bg-green-500.bg-opacity-75.text-white.text-center.rounded-md(href=href, target=target)
+    block
 
 mixin footer()
   footer.bg-green-600
+
+mixin t(key)
+  st-i18n(key=key)= translations.en[key]
+
+- t = (key) => translations.en[key]

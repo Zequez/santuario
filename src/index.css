@@ -104,3 +104,7 @@
 .saturate-hover:hover {
   filter: saturate(1);
 }
+
+[data-set-lang].active {
+  --tw-bg-opacity: 1;
+}

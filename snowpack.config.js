@@ -1,6 +1,12 @@
 const fs = require("fs");
 const fg = require("fast-glob");
 const { env } = require("process");
+const yaml = require("js-yaml");
+
+const i18n = {
+  en: yaml.load(fs.readFileSync("./src/I18n/translations/en.yaml", "utf8")),
+  es: yaml.load(fs.readFileSync("./src/I18n/translations/es.yaml", "utf8")),
+};
 
 function excludeEverythingButEntryPoints(entryPoints) {
   return env.NODE_ENV === "development"
@@ -51,8 +57,9 @@ module.exports = {
     // ],
     "@snowpack/plugin-postcss",
     ["snowpack-plugin-elm", { verbose: false }],
-    ["@marlonmarcello/snowpack-plugin-pug"],
+    ["@marlonmarcello/snowpack-plugin-pug", { data: { translations: i18n } }],
     ["@snowpack/plugin-webpack"],
+    ["snowpack-plugin-yaml"],
     // ["@snowpack/plugin-optimize"],
   ],
   packageOptions: {},
