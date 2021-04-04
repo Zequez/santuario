@@ -320,7 +320,7 @@ marketShopProductsView display products =
                                 (\p ->
                                     a [ href "/product", class "flex items-center" ]
                                         [ div [ class "h-8 w-8 mr-2" ] [ squareImageWithDefault p.images ]
-                                        , div [ class "flex-grow text-sm" ] [ text p.name ]
+                                        , div [ class "flex-grow text-sm" ] [ text (p.name ++ "aaaa") ]
                                         , div [ class "text-gray-400" ] [ text (pricingModelToString p.pricingModel) ]
                                         ]
                                 )

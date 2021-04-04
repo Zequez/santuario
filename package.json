@@ -15,7 +15,8 @@
     "start": "elm-constants && snowpack dev",
     "build": "elm-constants && snowpack build",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy": "ipfs-deploy build -p pinata -d cloudflare"
+    "deploy": "ipfs-deploy build -p pinata -d cloudflare",
+    "analyze": "webpack-bundle-analyzer build/stats.json"
   },
   "devDependencies": {
     "@snowpack/plugin-postcss": "^1.2.1",
@@ -24,8 +25,9 @@
     "elm-constants": "^1.0.0",
     "elm-debug-transformer": "^1.1.2",
     "snowpack": "^3.1.2",
-    "snowpack-plugin-elm": "^0.4.2",
-    "tailwindcss": "npm:@tailwindcss/postcss7-compat"
+    "snowpack-plugin-elm": "github:Zequez/snowpack-plugin-elm",
+    "tailwindcss": "npm:@tailwindcss/postcss7-compat",
+    "webpack-bundle-analyzer": "^4.4.0"
   },
   "dependencies": {
     "@marlonmarcello/snowpack-plugin-pug": "^1.0.3",

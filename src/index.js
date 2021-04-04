@@ -1,8 +1,8 @@
 // Development
-import ElmDebugger from "elm-debug-transformer";
-if (import.meta.env.ENV === "development") {
-  ElmDebugger.register();
-}
+// import ElmDebugger from "elm-debug-transformer";
+// if (import.meta.env.ENV === "development") {
+//   ElmDebugger.register();
+// }
 
 // Shared custom elements
 import registerAgentSignIn from "./Agent/SignIn.Element";
@@ -16,23 +16,16 @@ autoDetectLanguage();
 registerAgentSignIn();
 registerI18nElement();
 
-window.setLanguage = setLanguage;
-
 // Sub-apps
-import Communities from "./Communities/Main.elm";
-import FamilyRecovery from "./FamilyRecovery/Main.elm";
-import MetaCards from "./MetaCards/Main.elm";
-import Agora from "./Agora/Main.elm";
-import KintoStorage from "./KintoStorage/Main.elm";
-import Turnos from "./Turnos/Main.elm";
+import Elm from "./Santuario.elmproj";
 
 const apps = {
-  Communities: Communities.Communities.Main.init,
-  FamilyRecovery: FamilyRecovery.FamilyRecovery.Main.init,
-  MetaCards: MetaCards.MetaCards.Main.init,
-  Agora: Agora.Agora.Main.init,
-  KintoStorage: KintoStorage.KintoStorage.Main.init,
-  Turnos: Turnos.Turnos.Main.init,
+  Communities: Elm.Communities.Main.init,
+  FamilyRecovery: Elm.FamilyRecovery.Main.init,
+  MetaCards: Elm.MetaCards.Main.init,
+  Agora: Elm.Agora.Main.init,
+  KintoStorage: Elm.KintoStorage.Main.init,
+  Turnos: Elm.Turnos.Main.init,
 };
 
 const el = document.querySelector("[data-app]");

@@ -101,8 +101,6 @@ class I18nElement extends HTMLElement {
 
 function updateActive(lang: string) {
   document.querySelectorAll("[data-set-lang]").forEach((el) => {
-    console.log(el);
-
     el.classList.toggle("active", (el as any).dataset.setLang === lang);
   });
 }

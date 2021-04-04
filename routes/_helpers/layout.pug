@@ -12,6 +12,10 @@ html(lang="en" class="h-full")
     link(rel="stylesheet" type="text/css" href="/dist/index.css")
     link(rel="icon" type="image/png" href="/favicon.png")
     title= title
+    if env === "development"
+      script(src="https://unpkg.com/elm-debug-transformer@1.1.2/dist/elm-console-debug.js")
+      script.
+        ElmConsoleDebug.register()
   body(class="h-full")
     block content
     script(type="module" src=`/dist/index.js`)

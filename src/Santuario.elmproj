@@ -1,0 +1,11 @@
+{
+  "main-modules": [
+    "./Agent/SignIn.elm",
+    "./Communities/Main.elm",
+    "./FamilyRecovery/Main.elm",
+    "./MetaCards/Main.elm",
+    "./Agora/Main.elm",
+    "./KintoStorage/Main.elm",
+    "./Turnos/Main.elm"
+  ]
+}
